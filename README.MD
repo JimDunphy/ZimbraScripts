@@ -5,8 +5,7 @@ Report various accesses to the zimbra mail system (web,imap,pop,etc). List the i
 
 # Operation
 ```bash
-check_login.pl
-```
+% check_login.pl
 
 # Sample Report
 annaSmith@example.com
@@ -42,3 +41,4 @@ bldd1@example.com
  [   1] - 220.180.172.173  failed imap 
  [   1] - 58.248.164.150  failed imap 
 
+```
