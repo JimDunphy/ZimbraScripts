@@ -9,6 +9,7 @@ $audit_log = 0;	#todays logging
 chdir "/opt/zimbra/log";
 
 for (glob 'audit.log*') {
+#for (glob 'audit.log') {
 
   # audit.log is always todays stuff
   #print "Opening file $_";
@@ -27,10 +28,11 @@ for (glob 'audit.log*') {
 
   while (<IN>) 
   {
-	if (m#invalid password#i)
+	#if (m#invalid password#i)
+	if (m#invalid#i)
 	{ 
 		#print $_;
-		if (m#ImapServer#i) {
+		if ((m#ImapServer#i) && !(m#INFO#)) {
 		my($ip,$user) = m#.*\s+\[ip=.*;oip=(.*);via=.*;\]\s*.* failed for\s+\[(.*)\].*$#i;
 		$uagent = "imap";
 		#print " - ip is $ip, user is $user, agent is $uagent\n";
@@ -88,20 +90,17 @@ for $user (sort {$ip_list{$b} <=> $ip_list{$a}}  keys %ip_list )
 	for $ip (sort {$ip_list{$user}{$b} <=> $ip_list{$user}{$a}}  keys %{$ip_list{$user}} )
 	{
 		#  See cont of how many times
-		printf (" [%4d] - %s\n", $ip_list{$user}{$ip},$ip);
-		#printf ("%s\n",$ip);
+		printf ("Total [%4d] - %15s ", $ip_list{$user}{$ip},$ip);
+                if (exists $fip_list{$user}{$ip}) {
+                   if ($fip_list{$user}{$ip}{count})
+                   {
+		        printf (" Failed [%4d] - %s ", $fip_list{$user}{$ip}{count},$ip);
+			printf " failed web [%4d] ", $fip_list{$user}{$ip}{'web'} if exists $fip_list{$user}{$ip}{'web'};
+			printf " failed imap [%4d] ",$fip_list{$user}{$ip}{'imap'} if exists $fip_list{$user}{$ip}{'imap'};
+			printf " failed pop [%4d] " ,$fip_list{$user}{$ip}{'pop'} if exists $fip_list{$user}{$ip}{'pop'};
+                   }
+		}
+		printf ("\n");
 	}
 
-	# failed
-	for $ip (sort {$fip_list{$user}{$b} <=> $fip_list{$user}{$a}}  keys %{$fip_list{$user}} )
-	{
-		#  See cont of how many times
-		printf (" [%4d] - %s ", $fip_list{$user}{$ip}{count},$ip);
-		printf " failed web " if exists $fip_list{$user}{$ip}{'web'};
-		printf " failed imap " if exists $fip_list{$user}{$ip}{'imap'};
-		printf " failed pop " if exists $fip_list{$user}{$ip}{'pop'};
-		printf ("\n");
-#%%% we can have different user's in fip_list that ip_list doesn't have.
-		#printf ("%s\n",$ip);
-	}
 }
