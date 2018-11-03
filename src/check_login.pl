@@ -32,7 +32,7 @@ for (glob 'audit.log*') {
 	if (m#invalid#i)
 	{ 
 		#print $_;
-		if ((m#ImapServer#i) && !(m#INFO#)) {
+		if ((m#Imap#i) && !(m#INFO#)) {
 		my($ip,$user) = m#.*\s+\[ip=.*;oip=(.*);via=.*;\]\s*.* failed for\s+\[(.*)\].*$#i;
 		$uagent = "imap";
 		#print " - ip is $ip, user is $user, agent is $uagent\n";
@@ -42,8 +42,7 @@ for (glob 'audit.log*') {
 		++$fip_list{$user}{$ip}{'count'};
 		++$fip_list{$user}{$ip}{'imap'};
 		}
-		elsif (m#Pop3Server#i) 
-		{
+                elsif ((m#Pop#i) && !(m#INFO#)) {
 		my($ip,$user) = m#.*\s+\[ip=.*;oip=(.*);\]\s*.* failed for\s+\[(.*)\].*$#i;
 		$uagent = "pop";
 		#print " - ip is $ip, user is $user, agent is $uagent\n";
