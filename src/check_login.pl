@@ -43,7 +43,7 @@ for (glob 'audit.log*') {
 		++$fip_list{$user}{$ip}{'imap'};
 		}
                 elsif ((m#Pop#i) && !(m#INFO#)) {
-		my($ip,$user) = m#.*\s+\[ip=.*;oip=(.*);\]\s*.* failed for\s+\[(.*)\].*$#i;
+		my($ip,$user) = m#oip=(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3});.* failed for\s+\[(.*)\].*$#i;
 		$uagent = "pop";
 		#print " - ip is $ip, user is $user, agent is $uagent\n";
 		#print $_;
