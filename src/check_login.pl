@@ -80,7 +80,9 @@ for (glob 'audit.log*') {
 #print Dumper \%ip_list;
 #print Dumper \%fip_list;
 
-for $user (sort {$ip_list{$b} <=> $ip_list{$a}}  keys %ip_list )
+#for $user (sort {$ip_list{$b} <=> $ip_list{$a}}  keys %ip_list )
+# sort by email address
+for $user (sort keys %ip_list )
 {
 
   print "\n",$user,"\n";
