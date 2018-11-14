@@ -2,6 +2,10 @@
 #
 # NOTE: To jump to the various sections within this program search
 #     on the string 'SECTION'
+# Author: Jim Dunphy <jad aesir.com>
+# License (ISC): It's yours. Enjoy
+# Date: 10/9/2015
+#   Update on feedback from Lapsy from forums.zimbra.com 10/13/2018
 #
 # usage: check_login.pl [Options]
 #
