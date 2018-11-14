@@ -132,6 +132,8 @@ for (glob 'audit.log*') {
        or die("Can't open pipe from command 'zcat -f $filename' : $!\n");
 
   # part the audit logs looking for access types
+  # we just doing this
+  # zcat -f /opt/zimbra/log/audit.log* | grep -i invalid |egrep '(ImapS|Pop|http)'
   while (<IN>)
   {
    if (m#invalid#i)
@@ -153,7 +155,7 @@ for (glob 'audit.log*') {
          #print $_;
 	 setlists($user, $ip, $uagent);
       }
-      elsif (m#http#i)
+      elsif ((m#http#i) && (m#zclient#))
       {
           my($user,$ip,$uagent) = m#.*\s+\[name=(.*);oip=(.*);ua=(.*);\].*$#i;
           $uagent = "web";
