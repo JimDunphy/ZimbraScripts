@@ -1,7 +1,5 @@
 #!/usr/bin/perl
 #
-# NOTE: To jump to the various sections within this program search
-#     on the string 'SECTION'
 # Author: Jim Dunphy <jad aesir.com>
 # License (ISC): It's yours. Enjoy
 # Date: 10/9/2015
