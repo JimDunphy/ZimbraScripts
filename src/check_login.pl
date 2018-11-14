@@ -104,8 +104,8 @@ sub drawline {
 # Get the command line parameters for processing
     my $fcolor = 'YELLOW';
     my $srchuser = '@';
-    my $failtype = 'none';
-    my $gethost = 'fail';
+    my $failtype = 'none';	#default failure behavior (user|ip|none)
+    my $gethost = 'fail';       #default lookup behavior (all|fail|none)
     my $help, $dbug = 0;
     &GetOptions( "color=s" => \$fcolor,
                 "srchuser=s" => \$srchuser,
