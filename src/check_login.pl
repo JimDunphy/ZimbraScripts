@@ -163,9 +163,9 @@ for (glob 'audit.log*') {
           #print $_;
 	  setlists($user, $ip, $uagent);
       }
-      elsif (m#qtp#i)
+      elsif ((m#oproto=smtp#) && (m#failed#))
       {
-          my($ip,$user) = m#.*\s+\[name=.*;oip=(.*);oport.*\]\s*.* failed for\s+\[(.*)\].*$#i;
+          my($ip,$user) = m#oip=(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3});.* failed for\s+\[(.*)\].*$#i;
           $uagent = "smtp";
           #print " - ip is $ip, user is $user, agent is $uagent\n";
           #print $_;
