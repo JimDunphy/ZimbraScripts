@@ -103,7 +103,7 @@ sub drawline {
     my $fcolor = 'YELLOW';
     my $srchuser = '@';
     my $failtype = 'none';
-    my $gethost = 'none';
+    my $gethost = 'fail';
     my $help, $dbug = 0;
     &GetOptions( "color=s" => \$fcolor,
                 "srchuser=s" => \$srchuser,
