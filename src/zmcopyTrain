@@ -1,0 +1,56 @@
+#!/bin/bash
+#
+# Author: Jim Dunphy <jad aesir.com>
+# License (ISC): It's yours. Enjoy
+# Date: 12/7/2018
+#
+# usage: zmcopySpam
+#
+# Will create a directory /tmp/ owned by zimbra for ham or spam trained
+# by the users. Allows admin to fine tune spam rules.
+#
+# =====================================================
+#
+#
+
+DumpTrainSystem() {
+
+  spamdir=`mktmpdir spam`
+  hamdir=`mktmpdir ham`
+  echo "Pulling spamassassin data."
+  /opt/zimbra/libexec/zmspamextract -s -o ${spamdir}
+  /opt/zimbra/libexec/zmspamextract -n -o ${hamdir}
+
+  # only show if we have data (ham)
+  if [ "$(ls -A ${hamdir})" ]; then
+     echo "See ${hamdir} for ham"
+     chmod -R 777 ${hamdir}
+  else
+     rmdir ${hamdir}
+  fi
+
+  # only show if we have data (spam)
+  if [ "$(ls -A ${spamdir})" ]; then
+     echo "See ${spamdir} for spam"
+     chmod -R 777 ${spamdir}
+  else
+     rmdir ${spamdir}
+  fi
+}
+
+mktmpdir() {
+  mktemp -d "/tmp/zmtrainsa.$$.$1.XXXXXX" || exit 1
+}
+
+if [ x`whoami` != xzimbra ]; then
+    echo Error: must be run as zimbra user
+  exit 1
+fi
+
+cd /opt/zimbra
+source /opt/zimbra/bin/zmshutil || exit 1
+zmsetvars
+
+DumpTrainSystem
+
+exit 0
