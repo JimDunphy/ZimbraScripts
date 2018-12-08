@@ -6,12 +6,19 @@
 #
 # usage: zmcopySpam
 #
-# Will create a directory /tmp/ owned by zimbra for ham or spam trained
-# by the users. Allows admin to fine tune spam rules.
+# Will create a directory under /tmp owned by zimbra containing all the ham and spam directly
+# trained by the users. Purpose is to allows admin to fine tune spam rules.
 #
-# Note: It isn't destructive so normally processing by
-#  zmtrainsa continues to work. This just grabs a copy
-#  for the admin to look at. 
+# Note: It isn't destructive so all normal processing by
+#  zmtrainsa continues to work. This grabs a copy only.
+#
+# Background Information:
+#   If a user hits the junk button, that email is sent to a special spam user.
+#   If you drag a message to the junk folder, it is sent to a special spam user.
+#   If you move a message into a junk folder via a filter and action, it is sent to a special spam user.
+#   Same is true for the ham case.
+#   This script pulls those emails from both the ham and spam account so the admin can look at why the 
+#   email wasn't properly classified.
 #
 # =====================================================
 #
