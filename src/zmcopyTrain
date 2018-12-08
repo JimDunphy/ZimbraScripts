@@ -9,6 +9,10 @@
 # Will create a directory /tmp/ owned by zimbra for ham or spam trained
 # by the users. Allows admin to fine tune spam rules.
 #
+# Note: It isn't destructive so normally processing by
+#  zmtrainsa continues to work. This just grabs a copy
+#  for the admin to look at. 
+#
 # =====================================================
 #
 #
