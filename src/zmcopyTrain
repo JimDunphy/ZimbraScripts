@@ -20,6 +20,8 @@
 #   This script pulls those emails from both the ham and spam account so the admin can look at why the 
 #   email wasn't properly classified.
 #
+# Forum Reference: https://forums.zimbra.org/viewtopic.php?f=15&t=65303
+#
 # =====================================================
 #
 #
