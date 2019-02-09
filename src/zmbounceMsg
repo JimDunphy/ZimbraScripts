@@ -4,7 +4,7 @@
 # License (ISC): It's yours. Enjoy
 # Date: 2/9/2019
 #
-# usage: zmbounceMsg
+# usage: zmbounceMsg Message-ID
 #
 # Find quarantined message and release back to user based on Message-ID. That ID was sent to the user
 # via email. It will handle the multiple user case for the same Message-ID that exists in different files.
