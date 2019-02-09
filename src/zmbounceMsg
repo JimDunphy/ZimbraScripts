@@ -1,0 +1,64 @@
+#!/bin/bash
+#
+# Author: Jim Dunphy <jad aesir.com>
+# License (ISC): It's yours. Enjoy
+# Date: 2/9/2019
+#
+# usage: zmbounceMsg
+#
+# Find quarantined message and release back to user based on Message-ID. That ID was sent to the user
+# via email. It will handle the multiple user case for the same Message-ID that exists in different files.
+#
+# Caveat: It doesn't execute the command but explains the commands you would run.
+# Note: Administrator needs to verify the file before releasing the file
+#
+
+
+PATH=$PATH:/usr/bin:/sbin:/usr/sbin:/bin export PATH
+
+debug=0
+justOnce=1
+
+_d () { 
+   [ $debug ] && echo $1 
+}
+
+# Need Message-ID from the email sent to the user about quanrantine
+if [ $# -ne 1 ]; then
+   echo $0: usage: zmbounceMsg Message-ID
+   exit 1
+else
+   MessageId="$1"
+fi
+
+# Only zimbra user
+if [ x`whoami` != xzimbra ]; then
+   echo Error: must be run as zimbra user
+   exit 1
+fi
+
+#Get quarantine account
+read virusAcct <<< $(zmprov gcf zimbraAmavisQuarantineAccount | awk -F: '{print $2}')
+_d "virus account: $virusAcct"
+
+#Locate mailbox id for quarantine account
+read mailboxId <<< $(zmprov gmi "$virusAcct" | grep mailboxId | awk '{print $2}')
+_d "mailbox id: $mailboxId"
+
+#Locate message to bounce to user
+if [ -d /opt/zimbra/store/0/$mailboxId/msg/0 ]; then
+    cd /opt/zimbra/store/0/$mailboxId/msg/0
+	for filename in * ; do
+	   if head -100 $filename | grep -i Message-ID | grep -qi $MessageId; then
+	      if [ $justOnce -eq 1 ];then justOnce=0;echo "Run these commands";echo "cd /opt/zimbra/store/0/$mailboxId/msg/0";fi
+	      #_d "$filename selected"
+		  to=$(head -50 $filename | grep "^X-Envelope-To-Blocked:" | awk '{print $2}' | sed 's/["\n\r<>]//g' | head -1)
+		  from=$(head -50 $filename | grep "^X-Envelope-From:" | awk '{print $2}' | sed 's/["\n\r<>]//g' | head -1)
+		  if [ ! "x$to" = x ];then
+		    echo "zmlmtpinject -r $to -s $from $filename"
+          fi
+	   fi
+	done
+fi
+
+exit 0
