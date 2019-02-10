@@ -45,6 +45,7 @@ _d "virus account: $virusAcct"
 read mailboxId <<< $(zmprov gmi "$virusAcct" | grep mailboxId | awk '{print $2}')
 _d "mailbox id: $mailboxId"
 
+_d "location: /opt/zimbra/store/0/$mailboxId/msg/0"
 #Locate message to bounce to user
 if [ -d /opt/zimbra/store/0/$mailboxId/msg/0 ]; then
     cd /opt/zimbra/store/0/$mailboxId/msg/0
