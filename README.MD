@@ -6,6 +6,7 @@ Report various accesses to the zimbra mail system (web,imap,pop,etc). List the i
 # Operation
 ```bash
 % check_login.pl
+```
 
 # Usage:
 ~~~~
@@ -34,6 +35,7 @@ example: % check_login.pl -f=user    #only the accounts with failed logins
          % check_login.pl -s user.com -f ip -g fail #list all failed ip addresses with ip to domain name
 ~~~~
 
+```bash
 # Sample Report (original before recent update)
 annaSmith@example.com
  [   2] - 24.118.12.16
