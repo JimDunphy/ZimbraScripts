@@ -119,7 +119,7 @@ sub setlists {
 
     #%%% STEP 1 - our own users
     $ip_list{$attacker}{'ourUser'} = 1 if ($request =~ m#(jsessionid|adminPreAuth|apple-touch-icon)#);
-    $ip_list{$attacker}{'ourUser'} = 1 if (($status == '200') && ($request =~ m#(ActiveSync\?User=)#));
+    $ip_list{$attacker}{'ourUser'} = 1 if (($status == '200') && ($request =~ m#(ActiveSync\?User=|skin.css\?)#));
 
     # noise (filter some of this out)
     next if ($request =~ /favicon/i);

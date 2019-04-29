@@ -110,11 +110,10 @@ Track attacks against zimbra installations.  Can output list of ip's or ipsets f
 	[ 200] GET /  Mozilla/5.0 (Windows NT 6.3; Trident/7.0; rv:11.0) like Gecko
  Attacker from 90.216.214.64                    1 failed - Score 0% 
 ------------------------------------------------------------------------------------------------------------
-	[ 200] GET /  Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_3) AppleWebKit/534.55.3 (KHTML, like Gecko) Version/5.1.3 Safari/534.53.10
-	[ 200] GET /  Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_3) AppleWebKit/534.55.3 (KHTML, like Gecko) Version/5.1.3 Safari/534.53.10
-	[ 200] GET /  Mozilla/5.0 (Unknown; Linux x86_64) AppleWebKit/538.1 (KHTML, like Gecko) PhantomJS/2.1.1 Safari/538.1
-	[ 200] GET /zimbra/css/common,login,zhtml,skin.css?skin=harmony&v=170531142842  Mozilla/5.0 (Unknown; Linux x86_64) AppleWebKit/538.1 (KHTML, like Gecko) PhantomJS/2.1.1 Safari/538.1
- Attacker from 91.103.66.202                    4 failed - Score 0% 
+	[ 400] \x05\x01\x00 bot
+	[ 400] \x04\x01\x00P\x05\xBC\xD2e\x00 bot
+	[ 400] GET http://5.188.210.101/echo.php  Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36
+ Attacker from 5.188.210.101                    3 failed - Score 100% 
 ------------------------------------------------------------------------------------------------------------
 	[ 200] GET /  bot
  Attacker from 94.156.35.184                    1 failed - Score 100% 
