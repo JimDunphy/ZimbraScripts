@@ -28,7 +28,7 @@ use Getopt::Long;
 # Displays program usage
 
 $PROJECT="https://github.com/JimDunphy/ZimbraScripts/blob/master/src/check_attacks.pl";
-$VER="0.5";
+$VER="0.6";
 
 sub version() {
   print "$PROJECT\nv$VER\n";
@@ -79,13 +79,13 @@ sub printIPs {
    # print local ips
    if ($localUser) 
    {
-      print "$ip\n", if ($ip_list{$ip}{'ourUser'});
+      print "$ip\n" if ($ip_list{$ip}{'ourUser'});
       return;
    }
    else  # only remote ips
    {
        next if (exists $ip_list{$ip}{'ourUser'} && !$localUser);
-       print "$ip\n" if (!$ipset);             
+       print "$ip\n" if (!$ipset);
        print "ipset add blacklist24hr $ip -exists\n" if ($ipset); 
        return;
    }
@@ -126,7 +126,7 @@ sub setlists {
 
     #%%% STEP 1 - our own users
     $ip_list{$attacker}{'ourUser'} = 1 if ($request =~ m#(jsessionid|adminPreAuth|apple-touch-icon)#);
-    $ip_list{$attacker}{'ourUser'} = 1 if (($status == '200') && ($request =~ m#(ActiveSync\?User=|skin.css\?)#));
+    $ip_list{$attacker}{'ourUser'} = 1 if (($status == '200') && ($request =~ m#(ActiveSync\?User=)#));
 
     # noise (filter some of this out)
     next if ($request =~ /favicon/i);
@@ -195,7 +195,7 @@ sub drawline {
                 "srcip=s" => \$srcip,
                 "debug" => \$dbug,       # turn on debugging
                 "localUser" => \$localUser,  # turn on localuser
-                "IPlist" => \$IPlist,  # turn on localuser
+                "IPlist" => \$IPlist,  # print out ip's in a list format
                 "ipset" => \$ipset,  
                 "initIPset" => \$initIPset,  
                 "pstatus:s" => \$pstatus,  # turn on status codes

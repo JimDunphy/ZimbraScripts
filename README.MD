@@ -142,7 +142,7 @@ Generate list of ip's.
 107.170.240.102
 107.170.251.213
 ```
-Generate list of ip's in ipset format
+Generate list of ip's in ipset format. WARNING. There could be false positives unless you have tuned this program to your users.
 ```bash
 % check_attacks.pl --IPlist --ipset |head -5
 ipset add blacklist24hr 103.237.145.12 -exists
@@ -184,4 +184,11 @@ Print by code - all 500-509 records.  Note: may need to specify --userType=all a
 	[ 206] GET /zimbra/public/sounds/im/alert.wav  Mozilla/5.0 (Macintosh; Intel Mac OS X 10.14; rv:66.0) Gecko/20100101 Firefox/66.0
  Attacker from 124.18.10.247                    14528 failed - Score 0% 
 ------------------------------------------------------------------------------------------------------------
+```
+List the ip's that your local users access the server from.
+```bash
+% check_attacks.pl --iplist --usertype=localuser | wc -l
+55
+% check_attacks.pl --iplist | wc -l
+88
 ```
