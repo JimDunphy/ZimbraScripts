@@ -91,7 +91,17 @@ Tracking of outgoing messages based on how many they are sending.
 Can we determine a hacked account by the type of outgoing? 
 
 # check_attacks.pl
-Track attacks against zimbra installations.  Can output list of ip's or ipsets for blocking.
+Track attacks against zimbra installations.  Can output list of ip's or ipsets for blocking.  Searches all /opt/zimbra/log/nginx.access\* logs.
+It does this but orders the output by counts and pretty prints the output.  
+
+```bash
+% zcat -f /opt/zimbra/log/nginx.ac* |grep Autodiscover 
+95.179.215.180:36914 - - [29/Apr/2019:06:04:23 -0700]  "POST /Autodiscover/Autodiscover.xml HTTP/1.1" 400 567 "-" "python-requests/2.18.4" "X.X.X.X:8080"
+159.69.81.117:46880 - - [28/Apr/2019:05:19:00 -0700]  "POST /Autodiscover/Autodiscover.xml HTTP/1.1" 400 567 "-" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_2) AppleWebKit/537.17 (KHTML, lik
+e Gecko) Chrome/24.0.1309.0 Safari/537.17" "X.X.X.X:8080"
+```
+It attempts to filter out local users. The first step is to customize this for your zimbra installation the first time you run it.
+Search for STEP 1 in the code.  By default, it returns attackers which are everyone else but the local users.  Local users can also be included by the --usertype=all option or just the local users by --usertype=local
 
 # Sample outputs
 ```bash
