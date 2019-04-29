@@ -90,3 +90,35 @@ Start of a more general purpose summary script
 Tracking of outgoing messages based on how many they are sending.
 Can we determine a hacked account by the type of outgoing? 
 
+# check_attacks.pl
+Track attacks against zimbra installations.  Can output list of ip's or ipsets for blocking.
+
+```bash
+# Sample output
+	[ 200] GET /  Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/57.0.2987.133 Safari/537.36
+ Attacker from 71.6.232.7                       1 failed - Score 0% 
+------------------------------------------------------------------------------------------------------------
+	[ 200] GET /  bot
+	[ 200] GET /  bot
+	[ 200] GET /  bot
+	[ 200] GET /  bot
+ Attacker from 74.82.47.5                       4 failed - Score 100% 
+------------------------------------------------------------------------------------------------------------
+	[ 404] GET //a2billing/customer/templates/default/footer.tpl  python-requests/2.6.0 CPython/2.7.5 Linux/3.10.0-957.10.1.el7.x86_64
+ Attacker from 77.247.109.112                   1 failed - Score 0% 
+------------------------------------------------------------------------------------------------------------
+	[ 200] GET /  Mozilla/5.0 (Windows NT 6.3; Trident/7.0; rv:11.0) like Gecko
+ Attacker from 90.216.214.64                    1 failed - Score 0% 
+------------------------------------------------------------------------------------------------------------
+	[ 200] GET /  Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_3) AppleWebKit/534.55.3 (KHTML, like Gecko) Version/5.1.3 Safari/534.53.10
+	[ 200] GET /  Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_3) AppleWebKit/534.55.3 (KHTML, like Gecko) Version/5.1.3 Safari/534.53.10
+	[ 200] GET /  Mozilla/5.0 (Unknown; Linux x86_64) AppleWebKit/538.1 (KHTML, like Gecko) PhantomJS/2.1.1 Safari/538.1
+	[ 200] GET /zimbra/css/common,login,zhtml,skin.css?skin=harmony&v=170531142842  Mozilla/5.0 (Unknown; Linux x86_64) AppleWebKit/538.1 (KHTML, like Gecko) PhantomJS/2.1.1 Safari/538.1
+ Attacker from 91.103.66.202                    4 failed - Score 0% 
+------------------------------------------------------------------------------------------------------------
+	[ 200] GET /  bot
+ Attacker from 94.156.35.184                    1 failed - Score 100% 
+------------------------------------------------------------------------------------------------------------
+	[ 400] POST /Autodiscover/Autodiscover.xml  python-requests/2.18.4
+ Attacker from 95.179.215.180                   1 failed - Score 0% 
+```
