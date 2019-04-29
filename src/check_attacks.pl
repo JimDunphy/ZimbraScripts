@@ -28,7 +28,7 @@ use Getopt::Long;
 # Displays program usage
 
 $PROJECT="https://github.com/JimDunphy/ZimbraScripts/blob/master/src/check_attacks.pl";
-$VER="0.6";
+$VER="0.5";
 
 sub version() {
   print "$PROJECT\nv$VER\n";
@@ -278,6 +278,7 @@ for $attacker (sort keys %ip_list )
    my $count = $ip_list{$attacker}{'count'};
    my $hitstatus = 0;
    my $hack = 0;
+   $hack = 25 if (!$ip_list{$attacker}{'ourUser'});
    $hack = 100 if (exists $ip_list{$attacker}{'hack'});
   
    # print the requests per ip address
