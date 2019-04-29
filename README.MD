@@ -93,8 +93,10 @@ Can we determine a hacked account by the type of outgoing?
 # check_attacks.pl
 Track attacks against zimbra installations.  Can output list of ip's or ipsets for blocking.
 
+# Sample outputs
 ```bash
-# Sample output
+% check_attacks.pl
+
 	[ 200] GET /  Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/57.0.2987.133 Safari/537.36
  Attacker from 71.6.232.7                       1 failed - Score 0% 
 ------------------------------------------------------------------------------------------------------------
@@ -120,4 +122,56 @@ Track attacks against zimbra installations.  Can output list of ip's or ipsets f
 ------------------------------------------------------------------------------------------------------------
 	[ 400] POST /Autodiscover/Autodiscover.xml  python-requests/2.18.4
  Attacker from 95.179.215.180                   1 failed - Score 0% 
+```
+Generate list of ip's.
+```bash
+% check_attacks.pl --IPlist | head -5
+103.237.145.12
+106.12.89.13
+107.170.204.68
+107.170.240.102
+107.170.251.213
+```
+Generate list of ip's in ipset format
+```bash
+% check_attacks.pl --IPlist --ipset |head -5
+ipset add blacklist24hr 103.237.145.12 -exists
+ipset add blacklist24hr 106.12.89.13 -exists
+ipset add blacklist24hr 107.170.204.68 -exists
+ipset add blacklist24hr 107.170.240.102 -exists
+ipset add blacklist24hr 107.170.251.213 -exists
+```
+Search by ip addresses
+```bash
+%  ./check_attacks.pl --srcip='103.237.145.12|106.12.89.13|107.170.204.68'
+	[ 404] GET /admin//config.php  curl/7.29.0
+ Attacker from 103.237.145.12                   1 failed - Score 0% 
+------------------------------------------------------------------------------------------------------------
+	[ 200] GET /  Mozilla/5.0 zgrab/0.x
+ Attacker from 106.12.89.13                     1 failed - Score 0% 
+------------------------------------------------------------------------------------------------------------
+	[ 200] GET /  Mozilla/5.0 zgrab/0.x
+ Attacker from 107.170.204.68                   1 failed - Score 0% 
+```
+Show status
+```bash
+% check_attacks.pl --statuscnt
+Codes 200 Total: 22680
+Codes 206 Total: 1
+Codes 301 Total: 16
+Codes 302 Total: 17
+Codes 304 Total: 9
+Codes 400 Total: 23
+Codes 403 Total: 5
+Codes 404 Total: 8
+Codes 499 Total: 156
+Codes 500 Total: 12
+Codes 503 Total: 4
+```
+Print by code - all 500-509 records.  Note: may need to specify --userType=all as it defaults to attackers only
+```bash
+./check_attacks.pl --pstatus=206 --userType=all
+	[ 206] GET /zimbra/public/sounds/im/alert.wav  Mozilla/5.0 (Macintosh; Intel Mac OS X 10.14; rv:66.0) Gecko/20100101 Firefox/66.0
+ Attacker from 124.18.10.247                    14528 failed - Score 0% 
+------------------------------------------------------------------------------------------------------------
 ```

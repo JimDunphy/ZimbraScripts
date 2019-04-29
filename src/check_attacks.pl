@@ -10,6 +10,7 @@
 #
 # NOTES: ourUser  --- need to customize to each install to provide
 #                     best guess at what external attackers are
+#                     Search for STEP 1 in code to customize
 
 #========================================================================
 # SECTION -  Modules, Variables, etc.
@@ -17,7 +18,6 @@
 use Term::ANSIColor;
 use Data::Dumper qw(Dumper);
 use Getopt::Long;
-use Socket qw( inet_aton AF_INET );
 
 %ip_list = ();  #ip list
 %PossibleStatusCodes = ();
@@ -26,11 +26,20 @@ use Socket qw( inet_aton AF_INET );
 # SECTION -  FUNCTIONS
 #========================================================================
 # Displays program usage
+
+$PROJECT="https://github.com/JimDunphy/ZimbraScripts/blob/master/src/check_attacks.pl";
+$VER="0.5";
+
+sub version() {
+  print "$PROJECT\nv$VER\n";
+  exit;
+}
+
 sub usage {
 
 print <<"END";
 usage: % check_attacker.pl 
-        [--color=<color name (i.e. RED)>]
+        [--fcolor=<color name (i.e. RED)>]
         [--srcip=<ip address>]
         [--fail=<user|ip|none>]
         [--localUser ]
@@ -39,10 +48,11 @@ usage: % check_attacker.pl
 	[--usertype=<attacker|local|all>
 	[--pstatus=<regex of status codes>
         [--help]
+        [--version]
     where:
-        --srcip|s: print only records matching ip addresses
+        --srcip|sr: print only records matching ip addresses
 	--statuscnt: prints out the count for each status return code found
-        --help|h: this message\n";
+        --help|h: this message
 examples:  (-- or - or first few characters of option so not ambigous)
          % check_attacker.pl -srcip 10.10.10.1      #only this ip address
          % check_attacker.pl -srcip  '10.10.10.1|20.20.20.2'      #only these ip addresses
@@ -50,14 +60,11 @@ examples:  (-- or - or first few characters of option so not ambigous)
          % check_attacker.pl --statuscnt  #print status codes  #same
          % check_attacker.pl --localUser #include local users accounts
          % check_attacker.pl --IPlist   # print list of ips
-         % check_attacker.pl --IPlist   # print list of ips
          % check_attacker.pl --IPlist --ipset  # print list of ips in ipset format
          % check_attacker.pl --localUser --IPlist   # print list of local ips used by local users
          % check_attacker.pl --IPlist --ipset  | sh # install ip's into ipset 
          % check_attacker.pl --initIPset  # show how to create ipset 
-         % check_attacker.pl -c RED  #change color 
-         % check_attacker.pl -s user -f ip -g fail #list all failed ip addresses with ip to domain name
-         % check_attacker.pl -s user@example.com -f ip -g fail #list all failed ip addresses with ip to domain name
+         % check_attacker.pl -fc RED  #change color 
          % check_attacker.pl --usertype=local  # print out strings of only local users
          % check_attacker.pl --pstatus='4..'  # print out only those requests with a code of 4XX (ie 403, 404, 499)
          % check_attacker.pl --usertype=all --pstatus='403|500'  # print out only those requests with a code of 403 or 500 for all types (local & attacker)
@@ -194,6 +201,7 @@ sub drawline {
                 "pstatus:s" => \$pstatus,  # turn on status codes
                 "statuscnt" => \$statuscnt,  # print out count of status codes
                 "usertype=s" => \$usertype,  # print out count of status codes
+                "version" => \&version,
                 "help" => \$help);
 
     # call Help if parameters do not meet expected values or help is requested
