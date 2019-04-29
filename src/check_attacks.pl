@@ -303,7 +303,7 @@ for $attacker (sort keys %ip_list )
         printf ("\n");
     } 
 
-    my $msg = sprintf("%d failed - Score %d\% ", $count, $hack); 
+    my $msg = sprintf("%d Requests - Score %d\% ", $count, $hack); 
     $msgcolor = $hack > 50 ? "RED" : "CYAN";
     printresults("RED", "BOLD", "Attacker from $attacker", $msgcolor, $msg) if $hitstatus;
 
