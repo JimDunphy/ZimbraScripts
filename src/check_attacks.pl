@@ -28,7 +28,7 @@ use Getopt::Long;
 # Displays program usage
 
 $PROJECT="https://github.com/JimDunphy/ZimbraScripts/blob/master/src/check_attacks.pl";
-$VER="0.5";
+$VER="0.7";
 
 sub version() {
   print "$PROJECT\nv$VER\n";
@@ -305,7 +305,11 @@ for $attacker (sort keys %ip_list )
 
     my $msg = sprintf("%d Requests - Score %d\% ", $count, $hack); 
     $msgcolor = $hack > 50 ? "RED" : "CYAN";
-    printresults("RED", "BOLD", "Attacker from $attacker", $msgcolor, $msg) if $hitstatus;
+    if ($hitstatus)
+    {
+       printresults("RED", "BOLD", "Attacker from $attacker", $msgcolor, $msg) if $hack;
+       printresults("RED", "BOLD", "Zimbra User from $attacker", $msgcolor, $msg) if !$hack;
+    }
 
     drawline() if $hitstatus;
 }
