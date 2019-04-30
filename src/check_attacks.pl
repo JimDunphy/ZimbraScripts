@@ -33,7 +33,7 @@ $bot_list = "zgrab|Bot|python|curl|lwp|wget|http";
 # Displays program usage
 
 $PROJECT="https://github.com/JimDunphy/ZimbraScripts/blob/master/src/check_attacks.pl";
-$VER="0.8.3";
+$VER="0.8.4";
 
 sub version() {
   print "$PROJECT\nv$VER\n";
@@ -164,6 +164,10 @@ sub setlists {
     ++$ip_list{$attacker}{'hack'} if (($request =~ m#^-#) || ($uagent =~ m#^-$#));
     ++$ip_list{$attacker}{'hack'} if ($uagent =~ m#$bot_list#i);
 
+    # clean up if data is missing
+    $request = 'stealth request - exploit attemped' if ($request =~ m#^$#);
+    $uagent = 'bot' if ($uagent =~ m#^-$#);
+
     # no need for HTTP/1.1, etc on request
     $request =~ s#HTTP/.*##i if ($request =~ /http/i);  
 
@@ -201,9 +205,9 @@ sub printRequests {
 	   next if (($ip_list{$attacker}{'ourUser'} && ($usertype eq 'attacker'))
 	         || (($usertype eq 'local') && !$ip_list{$attacker}{'ourUser'}));
 
-	  # Skip this attacker, if -srcip parameter is given and attacker is not in search string
-          # check_attacks.pl --srcip '61.177.26.58|159.69.81.117|45.112.125.139|185.234.217.185|185.234.218.228'
-	  next if ($attacker !~ m#$srcip# && $srcip != '@');
+	   # Skip this attacker, if -srcip parameter is given and attacker is not in search string
+           # check_attacks.pl --srcip '61.177.26.58|159.69.81.117|45.112.125.139|185.234.217.185|185.234.218.228'
+	   next if ($attacker !~ m#$srcip# && $srcip != '@');
 
 	   my $hitstatus = 0;
 	   my $hack = 0;
@@ -217,25 +221,23 @@ sub printRequests {
 	       my $uagent = $ip_list{$attacker}{'uagent'}[$i];
 	       my $status = $ip_list{$attacker}{'status'}[$i];
 
+               # printing by status code 
 	       next if (($pstatus ne '') && ($status !~ /$pstatus/));
 	       $hitstatus++;
 
-	       $request = 'stealth request - exploit attemped' if ($request =~ m#^-$#);
-	       $uagent = 'bot' if ($uagent =~ m#^-$#);
+               printf ("\t[%4d] %s %s", $status,$request, $uagent);
+               print color('reset');
+               printf ("\n");
+	   } 
 
-		printf ("\t[%4d] %s %s", $status,$request, $uagent);
-		print color('reset');
-		printf ("\n");
-	    } 
-
-	    if ($hitstatus)
-	    {
-	       my $msg = sprintf("%d Requests - Score %d\% ",  $ip_list{$attacker}{'count'}, $hack); 
-	       $msgcolor = $hack > 50 ? "RED" : "CYAN";
-	       my $userstr = $hack ? "Attacker from " : "Zimbra User from ";
-	       printresults("RED", "BOLD", "$userstr $attacker", $msgcolor, $msg);
-	       drawline();
-	    }
+	   if ($hitstatus)
+	   {
+	      my $msg = sprintf("%d Requests - Score %d\% ",  $ip_list{$attacker}{'count'}, $hack); 
+	      $msgcolor = $hack > 50 ? "RED" : "CYAN";
+	      my $userstr = $hack ? "Attacker from " : "Zimbra User from ";
+	      printresults("RED", "BOLD", "$userstr $attacker", $msgcolor, $msg);
+	      drawline();
+	   }
 
 	}
 }
