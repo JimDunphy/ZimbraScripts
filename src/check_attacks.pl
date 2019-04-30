@@ -28,7 +28,7 @@ use Getopt::Long;
 # Displays program usage
 
 $PROJECT="https://github.com/JimDunphy/ZimbraScripts/blob/master/src/check_attacks.pl";
-$VER="0.8.0";
+$VER="0.8.1";
 
 sub version() {
   print "$PROJECT\nv$VER\n";
@@ -141,19 +141,20 @@ sub printCodes {
 sub setlists {
     my ($attacker, $request, $uagent, $status, $upstream, $remuser) = @_;
 
-    #%%% STEP 1 - our own users
+    #%%% BEGIN STEP 1 - our own users - this will be tracked. What is normal for your zimbra users?
     $ip_list{$attacker}{'ourUser'} = 1 if ($request =~ m#(jsessionid|adminPreAuth|apple-touch-icon)#);
     $ip_list{$attacker}{'ourUser'} = 1 if (($status == '200') && ($request =~ m#(ActiveSync\?User=)#));
 
-    # noise (filter some of this out)
+    # noise (filter some of this out) - this won't be saved.
     next if ($request =~ /favicon/i);
     if ($status == '404')
     {
        next if ($request =~ /EWS/i);
        next if ($request =~ /apple-touch/i);
     }
+    #%%% END STEP 1 - our own users
 
-    #%%%  need to investigate upstream still... possible hacking
+    #%%%  need to investigate $upstream still... possible hacking
 
     # definitely hacking... 
     ++$ip_list{$attacker}{'hack'} if (($request =~ m#^-#) || ($uagent =~ m#^-$#));
