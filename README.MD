@@ -217,7 +217,6 @@ Examples and Help
 usage: % check_attacker.pl 
         [--fcolor=<color name (i.e. RED)>]
         [--srcip=<ip address>]
-        [--fail=<user|ip|none>]
         [--localUser ]
         [--IPlist ]
 	[--statuscnt]

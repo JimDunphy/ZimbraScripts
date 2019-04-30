@@ -28,7 +28,7 @@ use Getopt::Long;
 # Displays program usage
 
 $PROJECT="https://github.com/JimDunphy/ZimbraScripts/blob/master/src/check_attacks.pl";
-$VER="0.8.1";
+$VER="0.8.2";
 
 sub version() {
   print "$PROJECT\nv$VER\n";
@@ -41,7 +41,6 @@ print <<"END";
 usage: % check_attacker.pl 
         [--fcolor=<color name (i.e. RED)>]
         [--srcip=<ip address>]
-        [--fail=<user|ip|none>]
         [--localUser ]
         [--IPlist ]
 	[--statuscnt]
@@ -248,7 +247,6 @@ sub drawline {
 # Get the command line parameters for processing
     my $fcolor = 'CYAN';    # GREEN, etc
     local $srcip = '@';
-    my $failtype = 'all';   #default failure behavior (user|ip|none)
     my $statuscnt = 0;      #default not to print status codes
     local $pstatus = '';       #default not to print status codes
     local $localUser = 0;   #default not to include localusers 
