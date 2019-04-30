@@ -33,7 +33,7 @@ $bot_list = "zgrab|Bot|python|curl|lwp|wget|http";
 # Displays program usage
 
 $PROJECT="https://github.com/JimDunphy/ZimbraScripts/blob/master/src/check_attacks.pl";
-$VER="0.8.4";
+$VER="0.8.5";
 
 sub version() {
   print "$PROJECT\nv$VER\n";
@@ -49,6 +49,7 @@ usage: % check_attacker.pl
         [--localUser ]
         [--IPlist ]
 	[--statuscnt]
+	[--display="date|upstream|bytes|port|referrer]
 	[--usertype=<attacker|local|all>
 	[--pstatus=<regex of status codes>
         [--help]
@@ -73,6 +74,8 @@ examples:  (-- or - or first few characters of option so not ambigous)
          % check_attacker.pl --usertype=local  # print out strings of only local users
          % check_attacker.pl --pstatus='4..'  # print out only those requests with a code of 4XX (ie 403, 404, 499)
          % check_attacker.pl --usertype=all --pstatus='403|500'  # print out only those requests with a code of 403 or 500 for all types (local & attacker)
+         % check_attacker.pl --display=date      # default is to display the user agent
+         % check_attacker.pl --display=referrer  # default is to display the user agent
 END
     exit 0;
 }
@@ -143,7 +146,8 @@ sub printCodes {
 
 
 sub setlists {
-    my ($attacker, $request, $uagent, $status, $upstream, $remuser) = @_;
+    #my ($attacker, $request, $uagent, $status, $upstream, $remuser) = @_;
+    my ($attacker, $port, $remuser, $date, $request, $status, $bytes, $referrer, $uagent, $upstream) = @_;
 
     #%%% BEGIN STEP 1 - our own users - this will be tracked. What is normal for your zimbra users?
     $ip_list{$attacker}{'ourUser'} = 1 if ($request =~ m#(jsessionid|adminPreAuth|apple-touch-icon)#);
@@ -174,7 +178,15 @@ sub setlists {
     my $i = ++$ip_list{$attacker}{'count'} - 1;
     $ip_list{$attacker}{'request'}[$i] = $request; # count of requests per ip
     $ip_list{$attacker}{'status'}[$i] = $status;
-    $ip_list{$attacker}{'uagent'}[$i] = $uagent;
+
+    # reuse this second field to display others columns
+    $ip_list{$attacker}{'uagent'}[$i] = $uagent;   # default
+    $ip_list{$attacker}{'uagent'}[$i] = $date if ($display =~ m#date#i);
+    $ip_list{$attacker}{'uagent'}[$i] = $upstream if ($display =~ m#upstream#i);
+    $ip_list{$attacker}{'uagent'}[$i] = $bytes if ($display =~ m#bytes#i);
+    $ip_list{$attacker}{'uagent'}[$i] = $port if ($display =~ m#port#i);
+    $ip_list{$attacker}{'uagent'}[$i] = $referrer if ($display =~ m#referrer#i);
+
 
     # Store off status code counts aware of usertype request. This is for the printCode
     $PossibleStatusCodes{$status};
@@ -254,6 +266,7 @@ sub drawline {
 #========================================================================
 # Get the command line parameters for processing
     my $fcolor = 'CYAN';    # GREEN, etc
+    local $display = 'uagent'; # default user agent
     local $srcip = '@';
     my $statuscnt = 0;      #default not to print status codes
     local $pstatus = '';       #default not to print status codes
@@ -264,6 +277,7 @@ sub drawline {
     my $help, $dbug = 0;
     local $usertype = 'attacker';
     &GetOptions("fcolor=s" => \$fcolor,  # %%% ToDo
+                "display=s" => \$display,
                 "srcip=s" => \$srcip,
                 "debug" => \$dbug,       # turn on debugging
                 "localUser" => \$localUser,  # turn on localuser
@@ -309,7 +323,7 @@ for (glob 'nginx.access.log*') {
 #print "upstream is [$upstream] ";
 #print "\n"; next;
 
-   setlists($ip, $request, $uagent, $status, $upstream, $remuser);
+   setlists($ip, $port, $remuser, $date, $request, $status, $bytes, $referrer, $uagent, $upstream);
 
   } 
   close (IN);
