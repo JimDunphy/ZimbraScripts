@@ -23,12 +23,17 @@ use Getopt::Long;
 %PossibleStatusCodes = ();
 
 #========================================================================
+# SECTION -  BOTS (listed in user agent)
+#========================================================================
+$bot_list = "zgrab|Bot|python|curl|lwp|wget|http";
+
+#========================================================================
 # SECTION -  FUNCTIONS
 #========================================================================
 # Displays program usage
 
 $PROJECT="https://github.com/JimDunphy/ZimbraScripts/blob/master/src/check_attacks.pl";
-$VER="0.8.2";
+$VER="0.8.3";
 
 sub version() {
   print "$PROJECT\nv$VER\n";
@@ -157,6 +162,7 @@ sub setlists {
 
     # definitely hacking... 
     ++$ip_list{$attacker}{'hack'} if (($request =~ m#^-#) || ($uagent =~ m#^-$#));
+    ++$ip_list{$attacker}{'hack'} if ($uagent =~ m#$bot_list#i);
 
     # no need for HTTP/1.1, etc on request
     $request =~ s#HTTP/.*##i if ($request =~ /http/i);  
