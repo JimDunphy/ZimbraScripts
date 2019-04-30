@@ -212,6 +212,43 @@ List the ip's that your local users access the server from.
 % check_attacks.pl --iplist | wc -l
 88
 ```
+Show attackers and then swap out the user agent for time of the attack
+```bash
+% check_attacks.pl --srcip '95.179.215.180|18.18.248.17|112.118.155.15|159.69.81.117|212.51.217.211|112.118.155.15' 
+	[ 400] POST /Autodiscover/Autodiscover.xml  python-requests/2.21.0
+ Attacker from  112.118.155.15                  1 Requests - Score 100% 
+------------------------------------------------------------------------------------------------------------
+	[ 200] GET /  python-requests/2.21.0
+	[ 400] POST /Autodiscover/Autodiscover.xml  Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_2) AppleWebKit/537.17 (KHTML, like Gecko) Chrome/24.0.1309.0 Safari/537.17
+ Attacker from  159.69.81.117                   2 Requests - Score 100% 
+------------------------------------------------------------------------------------------------------------
+	[ 400] POST /Autodiscover/Autodiscover.xml  python-requests/2.21.0
+	[ 400] GET /res/I18nMsg,AjxMsg,ZMsg,ZmMsg,AjxKeys,ZmKeys,ZdMsg,Ajx%20TemplateMsg.js.zgz?v=091214175450&skin=../../../../../../../../../opt/zimbra/conf/localconfig.xml%00  python-requests/2.21.0
+ Attacker from  18.18.248.17                    2 Requests - Score 100% 
+------------------------------------------------------------------------------------------------------------
+	[ 400] POST /Autodiscover/Autodiscover.xml  python-requests/2.18.4
+ Attacker from  95.179.215.180                  1 Requests - Score 100% 
+------------------------------------------------------------------------------------------------------------
+```
+Now swap out user agent field for date field To see when attacks happened.
+
+```bash
+% check_attacks.pl --srcip '95.179.215.180|18.18.248.17|112.118.155.15|159.69.81.117|212.51.217.211|112.118.155.15' --display=date
+	[ 400] POST /Autodiscover/Autodiscover.xml  29/Apr/2019:16:39:04
+ Attacker from  112.118.155.15                  1 Requests - Score 100% 
+------------------------------------------------------------------------------------------------------------
+	[ 200] GET /  28/Apr/2019:05:19:00
+	[ 400] POST /Autodiscover/Autodiscover.xml  28/Apr/2019:05:19:00
+ Attacker from  159.69.81.117                   2 Requests - Score 100% 
+------------------------------------------------------------------------------------------------------------
+	[ 400] POST /Autodiscover/Autodiscover.xml  29/Apr/2019:08:08:20
+	[ 400] GET /res/I18nMsg,AjxMsg,ZMsg,ZmMsg,AjxKeys,ZmKeys,ZdMsg,Ajx%20TemplateMsg.js.zgz?v=091214175450&skin=../../../../../../../../../opt/zimbra/conf/localconfig.xml%00  29/Apr/2019:08:08:22
+ Attacker from  18.18.248.17                    2 Requests - Score 100% 
+------------------------------------------------------------------------------------------------------------
+	[ 400] POST /Autodiscover/Autodiscover.xml  29/Apr/2019:06:04:23
+ Attacker from  95.179.215.180                  1 Requests - Score 100% 
+------------------------------------------------------------------------------------------------------------
+```
 Examples and Help
 ```bash
 usage: % check_attacker.pl 
@@ -220,6 +257,7 @@ usage: % check_attacker.pl
         [--localUser ]
         [--IPlist ]
 	[--statuscnt]
+	[--display="date|upstream|bytes|port|referrer]
 	[--usertype=<attacker|local|all>
 	[--pstatus=<regex of status codes>
         [--help]
@@ -244,4 +282,6 @@ examples:  (-- or - or first few characters of option so not ambigous)
          % check_attacker.pl --usertype=local  # print out strings of only local users
          % check_attacker.pl --pstatus='4..'  # print out only those requests with a code of 4XX (ie 403, 404, 499)
          % check_attacker.pl --usertype=all --pstatus='403|500'  # print out only those requests with a code of 403 or 500 for all types (local & attacker)
+         % check_attacker.pl --display=date      # default is to display the user agent
+         % check_attacker.pl --display=referrer  # default is to display the user agent
 ```
