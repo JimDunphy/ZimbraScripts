@@ -28,7 +28,7 @@ use Getopt::Long;
 # Displays program usage
 
 $PROJECT="https://github.com/JimDunphy/ZimbraScripts/blob/master/src/check_attacks.pl";
-$VER="0.7";
+$VER="0.8.0";
 
 sub version() {
   print "$PROJECT\nv$VER\n";
@@ -61,6 +61,7 @@ examples:  (-- or - or first few characters of option so not ambigous)
          % check_attacker.pl --localUser #include local users accounts
          % check_attacker.pl --IPlist   # print list of ips
          % check_attacker.pl --IPlist --ipset  # print list of ips in ipset format
+         % check_attacker.pl --IPlist -pstatus='40.' --ipset  # print list of ips in ipset format with status code 400..409
          % check_attacker.pl --localUser --IPlist   # print list of local ips used by local users
          % check_attacker.pl --IPlist --ipset  | sh # install ip's into ipset 
          % check_attacker.pl --initIPset  # show how to create ipset 
@@ -73,21 +74,37 @@ END
 }
 
 
-sub printIPs {
-   my ($ip) = @_;
+# ./check_attacks.pl --iplist --pstatus='40.'
+# ./check_attacks.pl --iplist --pstatus='40.' --ipset
+# ./check_attacks.pl --iplist --ipset
+# ./check_attacks.pl --iplist 
+# ./check_attacks.pl --iplist --localUser
 
-   # print local ips
-   if ($localUser) 
-   {
-      print "$ip\n" if ($ip_list{$ip}{'ourUser'});
-      return;
-   }
-   else  # only remote ips
-   {
-       next if (exists $ip_list{$ip}{'ourUser'} && !$localUser);
-       print "$ip\n" if (!$ipset);
-       print "ipset add blacklist24hr $ip -exists\n" if ($ipset); 
-       return;
+sub printIPs {
+
+   for $ip (sort keys %ip_list ) {
+       # print local ips
+       if ($localUser) {
+          print "$ip\n" if  $ip_list{$ip}{'ourUser'} ;
+       }
+       elsif (!exists $ip_list{$ip}{'ourUser'})   # only non-local IPs from here forward
+       {
+	  my $smatch = 0;
+          # print by status codes
+          if ($pstatus ne '')
+          {
+               # loop through the status array for this ip address
+               for ($i=0; $i < $#{$ip_list{$ip}{'request'}}+1; $i++)
+               {
+                  my $status = $ip_list{$ip}{'status'}[$i];
+                  $smatch = 1, last if ($status =~ /$pstatus/);
+              }
+          } else {
+              $smatch = 1;
+          }
+         # print all the attacking ip's
+         ($ipset ?  print "ipset add blacklist24hr $ip -exists\n" : print "$ip\n") if $smatch;
+      }
    }
 }
 
@@ -169,6 +186,54 @@ sub printresults {
     return;
 }
 
+sub printRequests {
+
+	# Print out the arrays by attackers ip address. Flag failures.
+	for $attacker (sort keys %ip_list )
+	{
+	   # don't print local/accepted users if only looking for attackers
+	   next if (($ip_list{$attacker}{'ourUser'} && ($usertype eq 'attacker'))
+	         || (($usertype eq 'local') && !$ip_list{$attacker}{'ourUser'}));
+
+	  # Skip this attacker, if -srcip parameter is given and attacker is not in search string
+          # check_attacks.pl --srcip '61.177.26.58|159.69.81.117|45.112.125.139|185.234.217.185|185.234.218.228'
+	  next if ($attacker !~ m#$srcip# && $srcip != '@');
+
+	   my $hitstatus = 0;
+	   my $hack = 0;
+	   $hack = 25 if (!$ip_list{$attacker}{'ourUser'});
+	   $hack = 100 if (exists $ip_list{$attacker}{'hack'});
+	  
+	   # print the requests per ip address
+	   for ($i=0; $i < $#{$ip_list{$attacker}{'request'}}+1; $i++)
+	   {
+	       my $request = $ip_list{$attacker}{'request'}[$i];
+	       my $uagent = $ip_list{$attacker}{'uagent'}[$i];
+	       my $status = $ip_list{$attacker}{'status'}[$i];
+
+	       next if (($pstatus ne '') && ($status !~ /$pstatus/));
+	       $hitstatus++;
+
+	       $request = 'stealth request - exploit attemped' if ($request =~ m#^-$#);
+	       $uagent = 'bot' if ($uagent =~ m#^-$#);
+
+		printf ("\t[%4d] %s %s", $status,$request, $uagent);
+		print color('reset');
+		printf ("\n");
+	    } 
+
+	    if ($hitstatus)
+	    {
+	       my $msg = sprintf("%d Requests - Score %d\% ",  $ip_list{$attacker}{'count'}, $hack); 
+	       $msgcolor = $hack > 50 ? "RED" : "CYAN";
+	       my $userstr = $hack ? "Attacker from " : "Zimbra User from ";
+	       printresults("RED", "BOLD", "$userstr $attacker", $msgcolor, $msg);
+	       drawline();
+	    }
+
+	}
+}
+
 # Pretty clear - output a big line
 sub drawline {
   print "\n------------------------------------------------------------------------------------------------------------\n";
@@ -181,10 +246,10 @@ sub drawline {
 #========================================================================
 # Get the command line parameters for processing
     my $fcolor = 'CYAN';    # GREEN, etc
-    my $srcip = '@';
+    local $srcip = '@';
     my $failtype = 'all';   #default failure behavior (user|ip|none)
     my $statuscnt = 0;      #default not to print status codes
-    my $pstatus = '';       #default not to print status codes
+    local $pstatus = '';       #default not to print status codes
     local $localUser = 0;   #default not to include localusers 
     my $IPlist = 0;         #print ip addresses
     local $ipset = 0;       #print local ip addresses in ipset format 
@@ -244,6 +309,7 @@ for (glob 'nginx.access.log*') {
 
 }
 
+
 #========================================================================
 # SECTION -  PRINT / MAIN
 #========================================================================
@@ -251,67 +317,20 @@ for (glob 'nginx.access.log*') {
 #print Dumper \%ip_list;
 #print Dumper \%PossibleStatusCodes;
 
-   #drawline();
-   printCodes if $statuscnt;	#print status codes
-   printIPsetInit if ($initIPset);      # show how to build an ipset   
-
-#debug
-# Print out the arrays by attackers ip address. Flag failures.
-for $attacker (sort keys %ip_list )
-{
-#debug
-#print "attacker is $attacker\n",next if ($debug);
-
-   printIPs($attacker),next if($IPlist); #print ips
-
-   # don't print local/accepted users if only looking for attackers
-   next if ($ip_list{$attacker}{'ourUser'} && ($usertype eq 'attacker'));
-   next if (($usertype eq 'local') && !$ip_list{$attacker}{'ourUser'});
-
-   #next if ($ip_list{$attacker}{count} <= 2);		# don't show 1 or 2 times only
-
-  # Skip this attacker, if -s parameter is given and attacker is not in search string
-  next if ($attacker !~ m#$srcip# && $srcip != '@');
-
-#debug
-#print Dumper \%ip_list->{$attacker}; 
-   my $count = $ip_list{$attacker}{'count'};
-   my $hitstatus = 0;
-   my $hack = 0;
-   $hack = 25 if (!$ip_list{$attacker}{'ourUser'});
-   $hack = 100 if (exists $ip_list{$attacker}{'hack'});
   
-   # print the requests per ip address
-   for ($i=0; $i < $#{$ip_list{$attacker}{'request'}}+1; $i++)
-   {
-       my $request = $ip_list{$attacker}{'request'}[$i];
-       my $uagent = $ip_list{$attacker}{'uagent'}[$i];
-       my $status = $ip_list{$attacker}{'status'}[$i];
-
-       next if (($pstatus ne '') && ($status !~ /$pstatus/));
-       $hitstatus++;
-
-       $request = 'stealth request - exploit attemped' if ($request =~ m#^-$#);
-       $uagent = 'bot' if ($uagent =~ m#^-$#);
-
-#debug
-#print Dumper $request;
-#print "attacker $attacker request is $request\n"; next;
-
-        printf ("\t[%4d] %s %s", $status,$request, $uagent);
-        print color('reset');
-        printf ("\n");
-    } 
-
-    my $msg = sprintf("%d Requests - Score %d\% ", $count, $hack); 
-    $msgcolor = $hack > 50 ? "RED" : "CYAN";
-    if ($hitstatus)
-    {
-       printresults("RED", "BOLD", "Attacker from $attacker", $msgcolor, $msg) if $hack;
-       printresults("RED", "BOLD", "Zimbra User from $attacker", $msgcolor, $msg) if !$hack;
+# MAIN LOGIC
+   if($statuscnt) {
+	printCodes;
+    } elsif ($initIPset) {
+	printIPsetInit;
+    } elsif ($IPlist) {
+	printIPs;
+    } else {
+        printRequests;
     }
 
-    drawline() if $hitstatus;
-}
+   # finished / clean up
    printf ("\n");
    print color('reset');  # make sure we clean up
+
+# END
