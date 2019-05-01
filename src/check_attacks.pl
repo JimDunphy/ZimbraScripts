@@ -33,7 +33,7 @@ $bot_list = "zgrab|Bot|python|curl|lwp|wget|http";
 # Displays program usage
 
 $PROJECT="https://github.com/JimDunphy/ZimbraScripts/blob/master/src/check_attacks.pl";
-$VER="0.8.5";
+$VER="0.8.6";
 
 sub version() {
   print "$PROJECT\nv$VER\n";
@@ -76,6 +76,8 @@ examples:  (-- or - or first few characters of option so not ambigous)
          % check_attacker.pl --usertype=all --pstatus='403|500'  # print out only those requests with a code of 403 or 500 for all types (local & attacker)
          % check_attacker.pl --display=date      # default is to display the user agent
          % check_attacker.pl --display=referrer  # default is to display the user agent
+
+    Status Codes - https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
 END
     exit 0;
 }
@@ -150,7 +152,7 @@ sub setlists {
     my ($attacker, $port, $remuser, $date, $request, $status, $bytes, $referrer, $uagent, $upstream) = @_;
 
     #%%% BEGIN STEP 1 - our own users - this will be tracked. What is normal for your zimbra users?
-    $ip_list{$attacker}{'ourUser'} = 1 if ($request =~ m#(jsessionid|adminPreAuth|apple-touch-icon)#);
+    $ip_list{$attacker}{'ourUser'} = 1 if (($status == '200') && ($request =~ m#(jsessionid|adminPreAuth)#));
     $ip_list{$attacker}{'ourUser'} = 1 if (($status == '200') && ($request =~ m#(ActiveSync\?User=)#));
 
     # noise (filter some of this out) - this won't be saved.
@@ -222,7 +224,7 @@ sub printRequests {
 	   next if ($attacker !~ m#$srcip# && $srcip != '@');
 
 	   my $hitstatus = 0;
-	   my $hack = 0;
+	   my $hack = 0;   # %%% The next 3 lines should be moved to setlists
 	   $hack = 25 if (!$ip_list{$attacker}{'ourUser'});
 	   $hack = 100 if (exists $ip_list{$attacker}{'hack'});
 	  
