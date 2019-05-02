@@ -33,7 +33,7 @@ $bot_list = "zgrab|Bot|python|curl|lwp|wget|http";
 # Displays program usage
 
 $PROJECT="https://github.com/JimDunphy/ZimbraScripts/blob/master/src/check_attacks.pl";
-$VER="0.8.6";
+$VER="0.8.7";
 
 sub version() {
   print "$PROJECT\nv$VER\n";
@@ -46,6 +46,7 @@ print <<"END";
 usage: % check_attacker.pl 
         [--fcolor=<color name (i.e. RED)>]
         [--srcip=<ip address>]
+        [--search='regex of search']
         [--localUser ]
         [--IPlist ]
 	[--statuscnt]
@@ -55,12 +56,14 @@ usage: % check_attacker.pl
         [--help]
         [--version]
     where:
-        --srcip|sr: print only records matching ip addresses
+        --srcip|src: print only records matching ip addresses
+        --search|sea: print all requests from an ip that has a search term hit
 	--statuscnt: prints out the count for each status return code found
         --help|h: this message
 examples:  (-- or - or first few characters of option so not ambigous)
          % check_attacker.pl -srcip 10.10.10.1      #only this ip address
          % check_attacker.pl -srcip  '10.10.10.1|20.20.20.2'      #only these ip addresses
+         % check_attacker.pl -search  'python|POST'     # if an ip had search term, all requests printed for ip
          % check_attacker.pl -statuscnt  #print status codes
          % check_attacker.pl --statuscnt  #print status codes  #same
          % check_attacker.pl --localUser #include local users accounts
@@ -166,6 +169,13 @@ sub setlists {
 
     #%%%  need to investigate $upstream still... possible hacking
 
+    # skip this attacker, if -search paramater is given 
+    # check_attacks.pl --search 'POST|Auto'
+    # check_attacks.pl --display=date --search '24/May|Post'
+    if(($search ne  '') && (($request.$uagent.$date.$referrer) =~ m#$search#i)) { 
+        $ip_list{$attacker}{'tag'} = 1;
+    }
+
     # definitely hacking... 
     ++$ip_list{$attacker}{'hack'} if (($request =~ m#^-#) || ($uagent =~ m#^-$#));
     ++$ip_list{$attacker}{'hack'} if ($uagent =~ m#$bot_list#i);
@@ -212,6 +222,9 @@ sub printresults {
 
 sub printRequests {
 
+#debug
+#print Dumper \%ip_list;
+
 	# Print out the arrays by attackers ip address. Flag failures.
 	for $attacker (sort keys %ip_list )
 	{
@@ -222,6 +235,9 @@ sub printRequests {
 	   # Skip this attacker, if -srcip parameter is given and attacker is not in search string
            # check_attacks.pl --srcip '61.177.26.58|159.69.81.117|45.112.125.139|185.234.217.185|185.234.218.228'
 	   next if ($attacker !~ m#$srcip# && $srcip != '@');
+
+           # don't print attackers that didn't match search
+           next if (! exists $ip_list{$attacker}{'tag'} && $search ne '');
 
 	   my $hitstatus = 0;
 	   my $hack = 0;   # %%% The next 3 lines should be moved to setlists
@@ -270,6 +286,7 @@ sub drawline {
     my $fcolor = 'CYAN';    # GREEN, etc
     local $display = 'uagent'; # default user agent
     local $srcip = '@';
+    local $search = '';
     my $statuscnt = 0;      #default not to print status codes
     local $pstatus = '';       #default not to print status codes
     local $localUser = 0;   #default not to include localusers 
@@ -281,6 +298,7 @@ sub drawline {
     &GetOptions("fcolor=s" => \$fcolor,  # %%% ToDo
                 "display=s" => \$display,
                 "srcip=s" => \$srcip,
+                "search=s" => \$search,
                 "debug" => \$dbug,       # turn on debugging
                 "localUser" => \$localUser,  # turn on localuser
                 "IPlist" => \$IPlist,  # print out ip's in a list format

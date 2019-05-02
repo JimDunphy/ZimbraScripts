@@ -249,6 +249,36 @@ Now swap out user agent field for date field To see when attacks happened.
  Attacker from  95.179.215.180                  1 Requests - Score 100% 
 ------------------------------------------------------------------------------------------------------------
 ```
+Search is different in that it locates a match and then prints all requests for that ip. It searches the requests, user agent, date, and referrer all at the same time. You may need to use the --display to confirm those matches.  For example, to search by date and if there was a POST, the following search would provide all requests for an ip address if any of those searches were previously found.
+```bash
+% check_attacks.pl --display=date --search '30/Apr|Post'
+	[ 400] POST /autodiscover  28/Apr/2019:10:23:12
+ Attacker from  47.75.173.76                    1 Requests - Score 25% 
+------------------------------------------------------------------------------------------------------------
+	[ 200] GET /  30/Apr/2019:22:48:54
+ Attacker from  54.37.16.241                    1 Requests - Score 25% 
+------------------------------------------------------------------------------------------------------------
+	[ 404] GET /admin//config.php  02/May/2019:07:00:52
+	[ 404] GET /admin//config.php  27/Apr/2019:14:13:19
+	[ 404] GET /admin//config.php  30/Apr/2019:04:47:15
+	[ 404] GET /admin//config.php  01/May/2019:05:29:00
+ Attacker from  138.185.144.75                  4 Requests - Score 100% 
+```
+Running the same search without the --display gives the same results but uagent is displayed now.
+```bash
+% check_attacks.pl --search '30/Apr|Post'
+	[ 400] POST /autodiscover  Mozilla/5.0 (Linux; U; en-US) AppleWebKit/525.13 (KHTML, like Gecko) Chrome/0.2.149.27 Safari/525.13
+ Attacker from  47.75.173.76                    1 Requests - Score 25% 
+------------------------------------------------------------------------------------------------------------
+	[ 200] GET /  Mozilla/5.0 (compatible; MSIE 10.0; Windows NT 6.1; Trident/6.0)
+ Attacker from  54.37.16.241                    1 Requests - Score 25% 
+------------------------------------------------------------------------------------------------------------
+	[ 404] GET /admin//config.php  curl/7.15.5 (x86_64-redhat-linux-gnu) libcurl/7.15.5 OpenSSL/0.9.8b zlib/1.2.3 libidn/0.6.5
+	[ 404] GET /admin//config.php  curl/7.15.5 (x86_64-redhat-linux-gnu) libcurl/7.15.5 OpenSSL/0.9.8b zlib/1.2.3 libidn/0.6.5
+	[ 404] GET /admin//config.php  curl/7.15.5 (x86_64-redhat-linux-gnu) libcurl/7.15.5 OpenSSL/0.9.8b zlib/1.2.3 libidn/0.6.5
+	[ 404] GET /admin//config.php  curl/7.15.5 (x86_64-redhat-linux-gnu) libcurl/7.15.5 OpenSSL/0.9.8b zlib/1.2.3 libidn/0.6.5
+ Attacker from  138.185.144.75                  4 Requests - Score 100% 
+```
 Examples and Help
 ```bash
 usage: % check_attacker.pl 
