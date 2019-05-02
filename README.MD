@@ -92,7 +92,7 @@ Can we determine a hacked account by the type of outgoing?
 
 # check_attacks.pl
 Track attacks against zimbra installations.  Can output list of ip's or ipsets for blocking.  Searches all /opt/zimbra/log/nginx.access\* logs.
-It does this but orders the output by counts and pretty prints the output.  
+It does this but orders the output by counts and pretty prints the output.  Documented in this thread. https://forums.zimbra.org/viewtopic.php?f=15&t=66092
 
 ```bash
 % zcat -f /opt/zimbra/log/nginx.ac* |grep Autodiscover 
