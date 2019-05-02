@@ -23,9 +23,10 @@ use Getopt::Long;
 %PossibleStatusCodes = ();
 
 #========================================================================
-# SECTION -  BOTS (listed in user agent)
+# SECTION -  BOTS (listed in user agent) and their bait
 #========================================================================
-$bot_list = "zgrab|Bot|python|curl|lwp|wget|http";
+$bot_list = "zgrab|Bot|python|curl|lwp|wget|http|parser";
+$bot_bait = "namespaces|wp-includes|pods|\.jsp";
 
 #========================================================================
 # SECTION -  FUNCTIONS
@@ -33,7 +34,7 @@ $bot_list = "zgrab|Bot|python|curl|lwp|wget|http";
 # Displays program usage
 
 $PROJECT="https://github.com/JimDunphy/ZimbraScripts/blob/master/src/check_attacks.pl";
-$VER="0.8.7";
+$VER="0.8.9";
 
 sub version() {
   print "$PROJECT\nv$VER\n";
@@ -64,6 +65,7 @@ examples:  (-- or - or first few characters of option so not ambigous)
          % check_attacker.pl -srcip 10.10.10.1      #only this ip address
          % check_attacker.pl -srcip  '10.10.10.1|20.20.20.2'      #only these ip addresses
          % check_attacker.pl -search  'python|POST'     # if an ip had search term, all requests printed for ip
+         % check_attacker.pl -search  '\.jsp|\.php|bot' # if an ip had search term, all requests printed for ip
          % check_attacker.pl -statuscnt  #print status codes
          % check_attacker.pl --statuscnt  #print status codes  #same
          % check_attacker.pl --localUser #include local users accounts
@@ -160,10 +162,11 @@ sub setlists {
 
     # noise (filter some of this out) - this won't be saved.
     next if ($request =~ /favicon/i);
-    if ($status == '404')
+    if ($status =~ m#404|499|500#)
     {
        next if ($request =~ /EWS/i);
        next if ($request =~ /apple-touch/i);
+       next if ($request =~ /ActiveSync/i);	# %%% can happen with 499/500 codes
     }
     #%%% END STEP 1 - our own users
 
@@ -172,6 +175,7 @@ sub setlists {
     # skip this attacker, if -search paramater is given 
     # check_attacks.pl --search 'POST|Auto'
     # check_attacks.pl --display=date --search '24/May|Post'
+    # check_attacks.pl -search '\.jsp|\.php' 
     if(($search ne  '') && (($request.$uagent.$date.$referrer) =~ m#$search#i)) { 
         $ip_list{$attacker}{'tag'} = 1;
     }
@@ -179,6 +183,7 @@ sub setlists {
     # definitely hacking... 
     ++$ip_list{$attacker}{'hack'} if (($request =~ m#^-#) || ($uagent =~ m#^-$#));
     ++$ip_list{$attacker}{'hack'} if ($uagent =~ m#$bot_list#i);
+    ++$ip_list{$attacker}{'hack'} if ($request =~ m#$bot_bait#i);
 
     # clean up if data is missing
     $request = 'stealth request - exploit attemped' if ($request =~ m#^$#);

@@ -173,7 +173,7 @@ ipset add blacklist24hr 193.188.22.127 -exists
 ```
 Search by ip addresses
 ```bash
-%  ./check_attacks.pl --srcip='103.237.145.12|106.12.89.13|107.170.204.68'
+% check_attacks.pl --srcip='103.237.145.12|106.12.89.13|107.170.204.68'
 	[ 404] GET /admin//config.php  curl/7.29.0
  Attacker from 103.237.145.12                   1 Requests - Score 25% 
 ------------------------------------------------------------------------------------------------------------
@@ -182,6 +182,20 @@ Search by ip addresses
 ------------------------------------------------------------------------------------------------------------
 	[ 200] GET /  Mozilla/5.0 zgrab/0.x
  Attacker from 107.170.204.68                   1 Requests - Score 25% 
+```
+Search by ip range to see how many in block are attacking
+```bash
+% check_attacks.pl --src 93.119.227
+	[ 200] GET /  Wget/1.13.4 (linux-gnu)
+ Attacker from  93.119.227.19                   1 Requests - Score 100% 
+------------------------------------------------------------------------------------------------------------
+	[ 200] GET /  Mozilla/5.0 (iPhone; CPU iPhone OS 10_3_1 like Mac OS X) AppleWebKit/603.1.30 (KHTML, like Gecko) Version/10.0 Mobile/14E304 Safari/602.1
+ Attacker from  93.119.227.34                   1 Requests - Score 25% 
+------------------------------------------------------------------------------------------------------------
+	[ 200] GET /  Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:58.0) Gecko/20100101 Firefox/58.0
+ Attacker from  93.119.227.91                   1 Requests - Score 25% 
+------------------------------------------------------------------------------------------------------------
+
 ```
 Show status
 ```bash
@@ -278,6 +292,31 @@ Running the same search without the --display gives the same results but uagent 
 	[ 404] GET /admin//config.php  curl/7.15.5 (x86_64-redhat-linux-gnu) libcurl/7.15.5 OpenSSL/0.9.8b zlib/1.2.3 libidn/0.6.5
 	[ 404] GET /admin//config.php  curl/7.15.5 (x86_64-redhat-linux-gnu) libcurl/7.15.5 OpenSSL/0.9.8b zlib/1.2.3 libidn/0.6.5
  Attacker from  138.185.144.75                  4 Requests - Score 100% 
+
+% check_attacks.pl --search '\.jsp|\.php'
+	[ 404] GET /nx8j78af1b.jsp  Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.113 Safari/537.36
+ Attacker from  128.14.209.154                  1 Requests - Score 100% 
+------------------------------------------------------------------------------------------------------------
+	[ 404] GET /nx8j78af1b.jsp  Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.113 Safari/537.36
+ Attacker from  128.14.209.226                  1 Requests - Score 100% 
+------------------------------------------------------------------------------------------------------------
+	[ 404] GET /admin//config.php  curl/7.15.5 (x86_64-redhat-linux-gnu) libcurl/7.15.5 OpenSSL/0.9.8b zlib/1.2.3 libidn/0.6.5
+	[ 404] GET /admin//config.php  curl/7.15.5 (x86_64-redhat-linux-gnu) libcurl/7.15.5 OpenSSL/0.9.8b zlib/1.2.3 libidn/0.6.5
+	[ 404] GET /admin//config.php  curl/7.15.5 (x86_64-redhat-linux-gnu) libcurl/7.15.5 OpenSSL/0.9.8b zlib/1.2.3 libidn/0.6.5
+	[ 404] GET /admin//config.php  curl/7.15.5 (x86_64-redhat-linux-gnu) libcurl/7.15.5 OpenSSL/0.9.8b zlib/1.2.3 libidn/0.6.5
+ Attacker from  138.185.144.75                  4 Requests - Score 100% 
+------------------------------------------------------------------------------------------------------------
+	[ 404] GET /admin/config.php  curl/7.29.0
+ Attacker from  203.147.24.220                  1 Requests - Score 100% 
+------------------------------------------------------------------------------------------------------------
+	[ 404] GET /admin//config.php  curl/7.19.7 (x86_64-koji-linux-gnu) libcurl/7.19.7 NSS/3.15.1 zlib/1.2.3 libidn/1.18 libssh2/1.4.2
+ Attacker from  221.212.99.106                  1 Requests - Score 100% 
+------------------------------------------------------------------------------------------------------------
+	[ 400] \x05\x01\x00 bot
+	[ 400] \x04\x01\x00P\x05\xBC\xD2e\x00 bot
+	[ 400] GET http://5.188.210.101/echo.php  Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36
+ Attacker from  5.188.210.101                   3 Requests - Score 100% 
+------------------------------------------------------------------------------------------------------------
 ```
 Examples and Help
 ```bash
