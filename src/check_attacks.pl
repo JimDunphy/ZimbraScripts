@@ -19,8 +19,8 @@ use Term::ANSIColor;
 use Data::Dumper qw(Dumper);
 use Getopt::Long;
 
-use diagnostics;
-use warnings;
+#use diagnostics;
+#use warnings;
 #use strict;
 
 my %ip_list = ();  #ip list
