@@ -19,8 +19,12 @@ use Term::ANSIColor;
 use Data::Dumper qw(Dumper);
 use Getopt::Long;
 
-%ip_list = ();  #ip list
-%PossibleStatusCodes = ();
+use diagnostics;
+use warnings;
+#use strict;
+
+my %ip_list = ();  #ip list
+my %PossibleStatusCodes = ();
 
 #========================================================================
 # SECTION -  BOTS (listed in user agent) and their bait
@@ -153,7 +157,6 @@ sub printCodes {
 
 
 sub setlists {
-    #my ($attacker, $request, $uagent, $status, $upstream, $remuser) = @_;
     my ($attacker, $port, $remuser, $date, $request, $status, $bytes, $referrer, $uagent, $upstream) = @_;
 
     #%%% BEGIN STEP 1 - our own users - this will be tracked. What is normal for your zimbra users?
@@ -161,12 +164,12 @@ sub setlists {
     $ip_list{$attacker}{'ourUser'} = 1 if (($status == '200') && ($request =~ m#(ActiveSync\?User=)#));
 
     # noise (filter some of this out) - this won't be saved.
-    next if ($request =~ /favicon/i);
+    return if ($request =~ /favicon/i);
     if ($status =~ m#404|499|500#)
     {
-       next if ($request =~ /EWS/i);
-       next if ($request =~ /apple-touch/i);
-       next if ($request =~ /ActiveSync/i);	# %%% can happen with 499/500 codes
+       return if ($request =~ /EWS/i);
+       return if ($request =~ /apple-touch/i);
+       return if ($request =~ /ActiveSync/i);	# %%% can happen with 499/500 codes
     }
     #%%% END STEP 1 - our own users
 
@@ -206,8 +209,7 @@ sub setlists {
 
 
     # Store off status code counts aware of usertype request. This is for the printCode
-    $PossibleStatusCodes{$status};
-    ++$PossibleStatusCodes{$status}{'count'};
+    $PossibleStatusCodes{$status}{'count'}++;
 
     return;
 }
@@ -239,7 +241,7 @@ sub printRequests {
 
 	   # Skip this attacker, if -srcip parameter is given and attacker is not in search string
            # check_attacks.pl --srcip '61.177.26.58|159.69.81.117|45.112.125.139|185.234.217.185|185.234.218.228'
-	   next if ($attacker !~ m#$srcip# && $srcip != '@');
+	   next if ($attacker !~ m#$srcip# && $srcip ne '@');
 
            # don't print attackers that didn't match search
            next if (! exists $ip_list{$attacker}{'tag'} && $search ne '');
@@ -267,7 +269,7 @@ sub printRequests {
 
 	   if ($hitstatus)
 	   {
-	      my $msg = sprintf("%d Requests - Score %d\% ",  $ip_list{$attacker}{'count'}, $hack); 
+	      my $msg = sprintf("%d Requests - Score %d%% ",  $ip_list{$attacker}{'count'}, $hack); 
 	      $msgcolor = $hack > 50 ? "RED" : "CYAN";
 	      my $userstr = $hack ? "Attacker from " : "Zimbra User from ";
 	      printresults("RED", "BOLD", "$userstr $attacker", $msgcolor, $msg);
@@ -298,7 +300,7 @@ sub drawline {
     my $IPlist = 0;         #print ip addresses
     local $ipset = 0;       #print local ip addresses in ipset format 
     my $initIPset = 0;      #show how to create an ipset
-    my $help, $dbug = 0;
+    my ($help, $dbug) = 0;
     local $usertype = 'attacker';
     &GetOptions("fcolor=s" => \$fcolor,  # %%% ToDo
                 "display=s" => \$display,
