@@ -1,4 +1,6 @@
 #!/usr/bin/perl
+
+export PATH=/sbin:/bin:/usr/sbin:/usr/bin:/root/bin:/usr/local/bin
 #
 # # Author: Jim Dunphy <jad aesir.com>
 # License (ISC): It's yours. Enjoy
@@ -11,7 +13,9 @@
 # usage: Choose 1 of either modes to run it.
 #
 # debug mode (parse files):
-#    %   zcat -f /opt/zimbra/log/nginx.access* | build_mail_ipset.pl
+#    % zcat -f /opt/zimbra/log/nginx.access* | build_mail_ipset.pl
+#    % grep '03/May' /opt/zimbra/log/nginx.access.log | build_mail_ipset.pl
+#    % check_attacks.pl --pstatus=400 | build_mail_ipset.pl
 # daemon mode (tail mode) needs to be running as root:
 #    # build_mail_ipset.pl -t
 #
@@ -108,7 +112,8 @@ $tail=File::Tail::Multi->new (
         }
 }
 
-openlog("build_mail_ipset.pl", 'ndelay', 'user');
+# syslog goes to mail.info on ipset addition
+openlog("build_mail_ipset.pl", 'ndelay', 'mail');
 
 %ip_list = ();
 
