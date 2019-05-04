@@ -38,7 +38,7 @@ $bot_bait = "namespaces|wp-includes|pods|\.jsp";
 # Displays program usage
 
 $PROJECT="https://github.com/JimDunphy/ZimbraScripts/blob/master/src/check_attacks.pl";
-$VER="0.8.9";
+$VER="0.8.10";
 
 sub version() {
   print "$PROJECT\nv$VER\n";
@@ -159,18 +159,22 @@ sub printCodes {
 sub setlists {
     my ($attacker, $port, $remuser, $date, $request, $status, $bytes, $referrer, $uagent, $upstream) = @_;
 
-    #%%% BEGIN STEP 1 - our own users - this will be tracked. What is normal for your zimbra users?
-    $ip_list{$attacker}{'ourUser'} = 1 if (($status == '200') && ($request =~ m#(jsessionid|adminPreAuth)#));
-    $ip_list{$attacker}{'ourUser'} = 1 if (($status == '200') && ($request =~ m#(ActiveSync\?User=)#));
-
+    #%%% BEGIN STEP 1 
     # noise (filter some of this out) - this won't be saved.
     return if ($request =~ /favicon/i);
+    return if (($status == '200') && ($request =~ m#GET /#i) && ($referrer =~ m#^-$#)); 
     if ($status =~ m#404|499|500#)
     {
        return if ($request =~ /EWS/i);
        return if ($request =~ /apple-touch/i);
        return if ($request =~ /ActiveSync/i);	# %%% can happen with 499/500 codes
     }
+
+    #  Normal Zimbra user stream found with 
+    #  check_attack --usertype=local
+    $ip_list{$attacker}{'ourUser'} = 1 if (($status == '200') && ($request =~ m#(jsessionid|adminPreAuth)#));
+    $ip_list{$attacker}{'ourUser'} = 1 if (($status == '200') && ($request =~ m#(ActiveSync\?User=)#));
+
     #%%% END STEP 1 - our own users
 
     #%%%  need to investigate $upstream still... possible hacking
@@ -187,6 +191,7 @@ sub setlists {
     ++$ip_list{$attacker}{'hack'} if (($request =~ m#^-#) || ($uagent =~ m#^-$#));
     ++$ip_list{$attacker}{'hack'} if ($uagent =~ m#$bot_list#i);
     ++$ip_list{$attacker}{'hack'} if ($request =~ m#$bot_bait#i);
+    ++$ip_list{$attacker}{'hack'} if ($status == '400'); # malformed requests
 
     # clean up if data is missing
     $request = 'stealth request - exploit attemped' if ($request =~ m#^$#);
