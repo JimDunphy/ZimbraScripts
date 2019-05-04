@@ -38,7 +38,7 @@ $bot_bait = "namespaces|wp-includes|pods|\.jsp";
 # Displays program usage
 
 $PROJECT="https://github.com/JimDunphy/ZimbraScripts/blob/master/src/check_attacks.pl";
-$VER="0.8.10";
+$VER="0.8.11";
 
 sub version() {
   print "$PROJECT\nv$VER\n";
@@ -162,7 +162,8 @@ sub setlists {
     #%%% BEGIN STEP 1 
     # noise (filter some of this out) - this won't be saved.
     return if ($request =~ /favicon/i);
-    return if (($status == '200') && ($request =~ m#GET /#i) && ($referrer =~ m#^-$#)); 
+    # %%% GET / HTTP is a problem with a 200 status. Both users and bots look the same. Need additional information so noise for now
+    return if (($status == '200') && ($request =~ m#GET\s+/\s+HTTP#i)); # noise for now
     if ($status =~ m#404|499|500#)
     {
        return if ($request =~ /EWS/i);
@@ -192,6 +193,7 @@ sub setlists {
     ++$ip_list{$attacker}{'hack'} if ($uagent =~ m#$bot_list#i);
     ++$ip_list{$attacker}{'hack'} if ($request =~ m#$bot_bait#i);
     ++$ip_list{$attacker}{'hack'} if ($status == '400'); # malformed requests
+    ++$ip_list{$attacker}{'hack'} if ($request =~ m#GET\s+/zimbra\s+HTTP#); # malformed requests
 
     # clean up if data is missing
     $request = 'stealth request - exploit attemped' if ($request =~ m#^$#);
