@@ -1,6 +1,11 @@
 #!/usr/bin/perl
 
-export PATH=/sbin:/bin:/usr/sbin:/usr/bin:/root/bin:/usr/local/bin
+local $ENV{PATH} = "/sbin:/bin:/usr/sbin:/usr/bin:/root/bin:/usr/local/bin:$ENV{PATH}";
+
+#use diagnostics;
+#use warnings;
+#use strict;
+
 #
 # # Author: Jim Dunphy <jad aesir.com>
 # License (ISC): It's yours. Enjoy
@@ -26,6 +31,8 @@ export PATH=/sbin:/bin:/usr/sbin:/usr/bin:/root/bin:/usr/local/bin
 #  %  zcat -f /opt/zimbra/log/nginx.access* | build_mail_ipset.pl 
 #     if you like the output then executed it
 #  %  zcat -f /opt/zimbra/log/nginx.access* | build_mail_ipset.pl | sh
+#     To view any ip's adding
+#  %  sudo ipset list
 #
 # Configure by following STEP0 .. STEP3 below
 #
@@ -54,17 +61,20 @@ export PATH=/sbin:/bin:/usr/sbin:/usr/bin:/root/bin:/usr/local/bin
 # STEP1: Configuration
 
 #  Force failure if they don't configure this.
-#$TRUSTED="127.0.0.1|X.X.X.X|Y.Y.Y.Y";
-$TRUSTED=CONFIGURE_ME
+local $TRUSTED="127.0.0.1|X.X.X.X|Y.Y.Y.Y";
+#$TRUSTED=CONFIGURE_ME
 # how many chances they get in 24 hours before we add them to an ipset
-$badLookUps=5;
-#$badLookUps=1;
+local $badLookUps=1;
 
 # STEP2: Configure/install ipset. Create ipset, Add a single rule.
 # % sudo ipset create blacklist24hr hash:ip hashsize 4096 timeout 86400
 # % sudo iptables -A INPUT -m set --set blacklist24hr src -j DROP
 #      or  (don't show as filtered for scans)
 # % sudo iptables -A INPUT -m set --set blacklist24hr src -j REJECT --reject-with tcp-reset
+# 
+# Note: adjust timeout for longer duration... 1 week perhaps?  60*60*24*7days = 604800
+#       timeout is when the ip address is automatically removed by the ipset
+#       This script will renew those ip's so an active attacker will stay in the ipset longer
 #
 
 use Sys::Syslog;
@@ -91,9 +101,11 @@ sub ReadStdin {
 sub ReadTail {
 
 $tail=File::Tail::Multi->new (
-     OutputPrefix => "f",
-     RemoveDuplicate => "1",
+     OutputPrefix => 0,		# 'f' --- would put filename in input stream
+     RemoveDuplicate => 1,
      NumLines => 1,
+     MaxAge => 15,
+     ScanForFiles => 30,
      #Files => ["/var/log/all.log","/var/log/httpd/access_log","/vendor/apache/clients/www.example.com/logs/www.log"]
      Files => ["/opt/zimbra/log/nginx.access.log"]
 );
@@ -105,7 +117,7 @@ $tail=File::Tail::Multi->new (
 
            foreach my $FH ( @{$rFD->{FileArray}} ) {
                    foreach my $LINE ( @{$FH->{LineArray}} ) {
-                           ProcessLine($LINE);
+                           ProcessLine($LINE) if ($LINE ne '');	#only call with data in the log
                    }
            }
            sleep 30;
@@ -126,15 +138,25 @@ sub ProcessLine {
    # parse (specific to zimbra nginx.access.log format)
    my($ip, $port, $remuser, $date, $request, $status, $bytes, $referrer, $uagent, $upstream) = /^([^:\s]+):?(\d*)\s+(?:-\s)([^\s]+)\s+\[([^\s+]+)[^\]]+\]\s+"([^"]*)"\s+(\d+)\s(\d+)\s+"([^"]*)"\s"([^"]*)"\s+"([^"]*)"/is;
 
-   # Never add our own trusted ip space.
-   if (($ip =~ m/$TRUSTED/)) { next };
+   if (($ip =~ m/$TRUSTED/)) { return }; # Never add our own trusted ip space.
+   if ($status eq '200') { return };     # Never for normal status
+
+
+   # if this ip has previously had a 400, we will count 404's as a dangerous now.
+   $ip_list{$ip}{'400'}{'count'}++ if (($status eq '404') && (exists $ip_list{$ip}{'400'}{'count'}));
+
+   # if this request has previously generated a '400' on another ip address, we consider this ip dangerous
+   $ip_list{$ip}{'400'}{'count'} = $badLookUps+1 if (exists $ip_list{$request});
+
+   # if we get a 400 status, lets remember this request so new ip's can be targetted immediately.
+   $ip_list{$request}++ if ($status eq '400');
 
    # track by ip address, status, and a count
-   ++$ip_list{$ip}{$status}{'count'};
-   #print "attacker $ip and count is $ip_list{$ip}{$status}{'count'}\n";
+   $ip_list{$ip}{$status}{'count'}++;
+   print "attacker $ip and count is $ip_list{$ip}{$status}{'count'}\n";
 
    # Example of blocking any ip that issues too many 400's that are larger than our badLookUps threashold
-   if ($ip_list{$ip}{'400'}{'count'} > $badLookUps)
+   if (exists $ip_list{$ip}{'400'}{'count'} && $ip_list{$ip}{'400'}{'count'} > $badLookUps)
    {
       BlockIP($ip, $ip_list{$ip}{'400'}{'count'});
    }
@@ -144,11 +166,11 @@ sub ProcessLine {
 sub BlockIP {
    my ($ip,$count) = @_;
 
-   #printf ("[%4d] - %s\n", $count,$ip);
+   printf ("[%4d] - %s\n", $count,$ip);
    printf ("ipset add blacklist24hr %s -exists\n",$ip);
 #STEP 3 (uncomment this out)
-#   system("ipset add blacklist24hr $ip -exist");
-#   syslog('info',"ipset add blacklist24hr $ip");
+   #system("ipset add blacklist24hr $ip -exist");
+   #syslog('info',"ipset add blacklist24hr $ip");
 }
 
 # main()
