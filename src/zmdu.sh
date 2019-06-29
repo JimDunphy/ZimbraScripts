@@ -4,25 +4,14 @@
 #
 # usage: zmdu.sh
 #
-# Ouptut: user size(human readable)
-#     0 ... admin@example.com
-#   15K ... wiki@example.com
-#   75M ... sam@example.com
-#   17K ... ham.lub2tukfun@example.com
-#    3G ... jim@example.com
-#
-# Caveat: zmprov is slow... So slow you won't believe it. :-)
-#
 # Required: NEEDS to RUN as THE ZIMBRA USER
 #
-# Author: Jim Dunphy 
+# Author: Jim Dunphy, assist: Klug from Zimbra forums.
 #
-# Sort by highest users 
-# % zmdu.sh | sort -rh  
+# Sorted by highest users 
 # 
-# has no output until completed so this might work better or use tee
-# % zmdu.sh > zmdu.out
-# % sort -rh zmdu.out
+# su - zimbra
+# % zmdu.sh 
 #    3G ... jim@example.com
 #    3G ... betsy@example.com
 #  696M ... anna@example.com
@@ -37,11 +26,6 @@
 #     0 ... admin@example.com
 # 
 
-for account in `zmprov -l gaa`
-do
-  result=$(zmprov gmi "$account" | awk '{/mailboxId/} { print $2 }' | tail -1)
-  size=$(echo $result | awk '{ suffix=" KMGT"; for(i=1; $1>1024 && i < length(suffix); i++) $1/=1024; print int($1) substr(suffix, i, 1), $3; }')
-  printf "%6s ... %s\n" $size  $account
-done
+zmprov gqu $(zmhostname) | awk '{ $2="";suffix=" KMGT"; for(i=1; $3>1024 && i < length(suffix); i++) $3/=1024; printf "%6s%c ... %s\n", int($3),substr(suffix, i, 1), $1; }' | sort -rh
 
 exit 0
