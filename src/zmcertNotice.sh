@@ -31,24 +31,24 @@ will try to obtain and install new zimbra certificate in 1 day(s)."
 #-------------------------------
 # What acme.sh thinks when it could renew
 
-renewalDate=$(acme.sh --list | sed 1d | head -1 | awk '{printf "%s %s %s %s %s %s",$10,$11,$12,$13,$14,$15}')
+renewalDate=$(acme.sh --list | sed 1d | head -1 | awk '{printf "%s %s %s %s %s %s",$11,$12,$13,$14,$15,$16}')
 
 # first renewal date
 cmd="date +%s -d \"$renewalDate\""
 r_time=$(eval $cmd)
 
 #-------------------------------
-# Subtract 1 day and see if could?
-
 # we want to know 2 days in advance
 currentDate=$(date -u)	# now
 
+cmd="date +%s -d \"$currentDate\""
+currentDateInSecs=$(eval $cmd)  # now in seconds
 cmd="date +%s -d \"$currentDate+2 days\""
-r_time_in_future=$(eval $cmd)
+r_time_in_future=$(eval $cmd)	# now + 2 days in seconds
 
 #-------------------------------
 
-if [ $r_time_in_future -gt $r_time ]; then
+if ((( $currentDateInSecs > $r_time )) || (($r_time_in_future > $r_time))) ; then
   echo "will renew in 1 day"
 
 echo "Subject: $subject
