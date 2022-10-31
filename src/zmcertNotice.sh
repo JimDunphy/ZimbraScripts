@@ -9,6 +9,8 @@
 # 18 0 * * * "/opt/zimbra/.acme.sh"/acme.sh --cron --home "/opt/zimbra/.acme.sh" > /dev/null
 # 17 0 * * * /usr/local/bin/zmcertNotice.sh > /dev/null 2>&1
 #
+# Bug fix: acme.sh version 3.05 changed the date format for ./acme.sh --list (workaround: 10/31/2022)
+#
 # You need to supply your email at STEP 1. There is only 1 step :-)
 #
 
@@ -32,6 +34,11 @@ will try to obtain and install new zimbra certificate in 1 day(s)."
 # What acme.sh thinks when it could renew
 
 renewalDate=$(acme.sh --list | sed 1d | head -1 | awk '{printf "%s %s %s %s %s %s",$11,$12,$13,$14,$15,$16}')
+if [ "$renewalDate" = "     " ]; then
+   #echo "new format"
+   # 2022-10-30T17:14:29Z --- need to convert to 2022-10-30 17:14:29
+   renewalDate=$(acme.sh --list | sed 1,"$domain"d | head -1 | awk '{printf "%s",$6}' | sed 's/T/ /' | sed 's/Z//')
+fi
 
 # first renewal date
 cmd="date +%s -d \"$renewalDate\""
