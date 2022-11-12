@@ -11,6 +11,9 @@
 # NOTES: ourUser  --- need to customize to each install to provide
 #                     best guess at what external attackers are
 #                     Search for STEP 1 in code to customize
+# 
+# Nov 12, 2022 - getting better. Very little customizations needed anymore
+#
 
 #========================================================================
 # SECTION -  Modules, Variables, etc.
@@ -25,12 +28,15 @@ use Getopt::Long;
 
 my %ip_list = ();  #ip list
 my %PossibleStatusCodes = ();
+my $logDir="/opt/zimbra/log";
+my $file="nginx.access.log*";
 
 #========================================================================
 # SECTION -  BOTS (listed in user agent) and their bait
 #========================================================================
-$bot_list = "zgrab|Bot|python|curl|lwp|wget|http|parser";
-$bot_bait = "namespaces|wp-includes|pods|\.jsp";
+my $bot_list = "zgrab|Bot|python|curl|lwp|wget|http|parser|cyberwarcon";
+my $bot_bait = "namespaces|wp-includes|pods|\.jsp";
+my $san_list = '';
 
 #========================================================================
 # SECTION -  FUNCTIONS
@@ -38,7 +44,7 @@ $bot_bait = "namespaces|wp-includes|pods|\.jsp";
 # Displays program usage
 
 $PROJECT="https://github.com/JimDunphy/ZimbraScripts/blob/master/src/check_attacks.pl";
-$VER="0.8.11";
+$VER="0.8.12";
 
 sub version() {
   print "$PROJECT\nv$VER\n";
@@ -53,6 +59,8 @@ usage: % check_attacker.pl
         [--srcip=<ip address>]
         [--search='regex of search']
         [--localUser ]
+        [--logDir ]
+        [--file ]
         [--IPlist ]
 	[--statuscnt]
 	[--display="date|upstream|bytes|port|referrer]
@@ -175,6 +183,10 @@ sub setlists {
     #  check_attack --usertype=local
     $ip_list{$attacker}{'ourUser'} = 1 if (($status == '200') && ($request =~ m#(jsessionid|adminPreAuth)#));
     $ip_list{$attacker}{'ourUser'} = 1 if (($status == '200') && ($request =~ m#(ActiveSync\?User=)#));
+    #%%% $ip_list{$attacker}{'ourUser'} = 1 if ((($status == '200') && $request == 'POST') && ($request =~ m#soap/NoOpRequest#));
+    # more general case with service/soap
+    $ip_list{$attacker}{'ourUser'} = 1 if ((($status == '200') && $request == 'POST') && ($request =~ m#service/soap#));
+
 
     #%%% END STEP 1 - our own users
 
@@ -192,6 +204,7 @@ sub setlists {
     ++$ip_list{$attacker}{'hack'} if (($request =~ m#^-#) || ($uagent =~ m#^-$#));
     ++$ip_list{$attacker}{'hack'} if ($uagent =~ m#$bot_list#i);
     ++$ip_list{$attacker}{'hack'} if ($request =~ m#$bot_bait#i);
+    ++$ip_list{$attacker}{'hack'} if ($request =~ m#//($san_list)#i);
     ++$ip_list{$attacker}{'hack'} if ($status == '400'); # malformed requests
     ++$ip_list{$attacker}{'hack'} if ($request =~ m#GET\s+/zimbra\s+HTTP#); # malformed requests
 
@@ -291,7 +304,21 @@ sub drawline {
   print "\n------------------------------------------------------------------------------------------------------------\n";
   return;
 }
-  
+
+sub getSanList {
+
+   #certificate names
+   open my $fh, "-|","openssl s_client -connect 127.0.0.1:443 < /dev/null 2> /dev/null | openssl x509 -noout -text | grep DNS:" or die $!;
+
+   my ($san);
+   $san=<$fh>;
+   $san =~ s#DNS:##gp;
+   $san =~ s#,#|#gp;
+   $san =~ s#\s+##gp;
+   $san =~ s#\.#\\.#gp;
+
+   close($fh);
+}
 
 #========================================================================
 # SECTION -  GET input parameters
@@ -312,6 +339,8 @@ sub drawline {
     &GetOptions("fcolor=s" => \$fcolor,  # %%% ToDo
                 "display=s" => \$display,
                 "srcip=s" => \$srcip,
+                "file=s" => \$file,
+                "logDir=s" => \$logDir,
                 "search=s" => \$search,
                 "debug" => \$dbug,       # turn on debugging
                 "localUser" => \$localUser,  # turn on localuser
@@ -328,13 +357,19 @@ sub drawline {
     $usertype = 'attacker' if $usertype eq '';
     usage() if($help || ($usertype !~ m/^attacker|local|all$/));
 
+# determine what are legal names based on the certificate - used to determine bot vs user
+getSanList;
+
 
 #========================================================================
 # SECTION -  PARSE audit.log files & process accordingly
 #========================================================================
-chdir "/opt/zimbra/log";
+#chdir "/opt/zimbra/log";
+chdir "$logDir";
 
-for (glob 'nginx.access.log*') {
+#for (glob 'nginx.access.log*') {
+#for (glob 'nginx.access.log') {
+for (glob $file) {
 
   $nginx_log = $_ eq 'nginx.access.log' ? 1 : 0;
   #print "Opening file $_";
