@@ -22,14 +22,16 @@ use Term::ANSIColor;
 use Data::Dumper qw(Dumper);
 use Getopt::Long;
 
-#use diagnostics;
-#use warnings;
-#use strict;
+package main;
+
+use diagnostics;
+use warnings;
+use strict;
 
 my %ip_list = ();  #ip list
 my %PossibleStatusCodes = ();
 my $logDir="/opt/zimbra/log";
-my $file="nginx.access.log*";
+my $nginx_access_log="nginx.access.log*";
 
 #========================================================================
 # SECTION -  BOTS (listed in user agent) and their bait
@@ -38,13 +40,29 @@ my $bot_list = "zgrab|Bot|python|curl|lwp|wget|http|parser|cyberwarcon";
 my $bot_bait = "namespaces|wp-includes|pods|\.jsp";
 my $san_list = '';
 
+my $pstatus = '';       #default not to print status codes
+my $ipset = 0;       #print local ip addresses in ipset format 
+my $fcolor = 'CYAN';    # GREEN, etc
+my $display = 'uagent'; # default user agent
+my $srcip = '@';
+my $search = '';
+my $statuscnt = 0;      #default not to print status codes
+my $localUser = 0;   #default not to include localusers 
+my $IPlist = 0;         #print ip addresses
+my $initIPset = 0;      #show how to create an ipset
+my ($help, $debug) = 0;
+my $usertype = 'attacker';
+
+# pre-declare Globals
+use vars qw( $debug $localUser $pstatus $ipset $search $display $attacker $usertype $srcip $msgcolor $nginx_log );
+
 #========================================================================
 # SECTION -  FUNCTIONS
 #========================================================================
 # Displays program usage
 
-$PROJECT="https://github.com/JimDunphy/ZimbraScripts/blob/master/src/check_attacks.pl";
-$VER="0.8.12";
+my $PROJECT="https://github.com/JimDunphy/ZimbraScripts/blob/master/src/check_attacks.pl";
+my $VER="0.8.13";
 
 sub version() {
   print "$PROJECT\nv$VER\n";
@@ -60,7 +78,7 @@ usage: % check_attacker.pl
         [--search='regex of search']
         [--localUser ]
         [--logDir ]
-        [--file ]
+        [--nginx_access_log ]
         [--IPlist ]
 	[--statuscnt]
 	[--display="date|upstream|bytes|port|referrer]
@@ -82,6 +100,7 @@ examples:  (-- or - or first few characters of option so not ambigous)
          % check_attacker.pl --statuscnt  #print status codes  #same
          % check_attacker.pl --localUser #include local users accounts
          % check_attacker.pl --IPlist   # print list of ips
+         % check_attacker.pl --IPlist --localUser   # print list of ips from local users
          % check_attacker.pl --IPlist --ipset  # print list of ips in ipset format
          % check_attacker.pl --IPlist -pstatus='40.' --ipset  # print list of ips in ipset format with status code 400..409
          % check_attacker.pl --localUser --IPlist   # print list of local ips used by local users
@@ -108,7 +127,7 @@ END
 
 sub printIPs {
 
-   for $ip (sort keys %ip_list ) {
+   for my $ip (sort keys %ip_list ) {
        # print local ips
        if ($localUser) {
           print "$ip\n" if  $ip_list{$ip}{'ourUser'} ;
@@ -120,7 +139,7 @@ sub printIPs {
           if ($pstatus ne '')
           {
                # loop through the status array for this ip address
-               for ($i=0; $i < $#{$ip_list{$ip}{'request'}}+1; $i++)
+               for (my $i=0; $i < $#{$ip_list{$ip}{'request'}}+1; $i++)
                {
                   my $status = $ip_list{$ip}{'status'}[$i];
                   $smatch = 1, last if ($status =~ /$pstatus/);
@@ -156,7 +175,7 @@ END
 
 sub printCodes {
 
-   for $codes (sort keys %PossibleStatusCodes )
+   for my $codes (sort keys %PossibleStatusCodes )
    {
       print "Codes $codes Total: $PossibleStatusCodes{$codes}{'count'}\n";
    }
@@ -165,13 +184,13 @@ sub printCodes {
 
 
 sub setlists {
-    my ($attacker, $port, $remuser, $date, $request, $status, $bytes, $referrer, $uagent, $upstream) = @_;
+    my ($ip, $port, $remuser, $date, $request, $status, $bytes, $referrer, $uagent, $upstream) = @_;
 
     #%%% BEGIN STEP 1 
     # noise (filter some of this out) - this won't be saved.
     return if ($request =~ /favicon/i);
     # %%% GET / HTTP is a problem with a 200 status. Both users and bots look the same. Need additional information so noise for now
-    return if (($status == '200') && ($request =~ m#GET\s+/\s+HTTP#i)); # noise for now
+    return if (($status eq '200') && ($request =~ m#GET\s+/\s+HTTP#i)); # noise for now
     if ($status =~ m#404|499|500#)
     {
        return if ($request =~ /EWS/i);
@@ -181,11 +200,11 @@ sub setlists {
 
     #  Normal Zimbra user stream found with 
     #  check_attack --usertype=local
-    $ip_list{$attacker}{'ourUser'} = 1 if (($status == '200') && ($request =~ m#(jsessionid|adminPreAuth)#));
-    $ip_list{$attacker}{'ourUser'} = 1 if (($status == '200') && ($request =~ m#(ActiveSync\?User=)#));
-    #%%% $ip_list{$attacker}{'ourUser'} = 1 if ((($status == '200') && $request == 'POST') && ($request =~ m#soap/NoOpRequest#));
+    $ip_list{$ip}{'ourUser'} = 1 if (($status eq '200') && ($request =~ m#(jsessionid|adminPreAuth|st=conversation)#));
+    $ip_list{$ip}{'ourUser'} = 1 if (($status eq '200') && ($request =~ m#(ActiveSync\?User=)#));
+    $ip_list{$ip}{'ourUser'} = 1 if ((($status eq '200') && $request =~ /POST/) && ($request =~ m#soap|NoOpRequest#i));
     # more general case with service/soap
-    $ip_list{$attacker}{'ourUser'} = 1 if ((($status == '200') && $request == 'POST') && ($request =~ m#service/soap#));
+    $ip_list{$ip}{'ourUser'} = 1 if ((($status eq '200') && $request =~ /POST/) && ($request =~ m#service/soap#));
 
 
     #%%% END STEP 1 - our own users
@@ -197,16 +216,16 @@ sub setlists {
     # check_attacks.pl --display=date --search '24/May|Post'
     # check_attacks.pl -search '\.jsp|\.php' 
     if(($search ne  '') && (($request.$uagent.$date.$referrer) =~ m#$search#i)) { 
-        $ip_list{$attacker}{'tag'} = 1;
+        $ip_list{$ip}{'tag'} = 1;
     }
 
     # definitely hacking... 
-    ++$ip_list{$attacker}{'hack'} if (($request =~ m#^-#) || ($uagent =~ m#^-$#));
-    ++$ip_list{$attacker}{'hack'} if ($uagent =~ m#$bot_list#i);
-    ++$ip_list{$attacker}{'hack'} if ($request =~ m#$bot_bait#i);
-    ++$ip_list{$attacker}{'hack'} if ($request =~ m#//($san_list)#i);
-    ++$ip_list{$attacker}{'hack'} if ($status == '400'); # malformed requests
-    ++$ip_list{$attacker}{'hack'} if ($request =~ m#GET\s+/zimbra\s+HTTP#); # malformed requests
+    ++$ip_list{$ip}{'hack'} if (($request =~ m#^-#) || ($uagent =~ m#^-$#));
+    ++$ip_list{$ip}{'hack'} if ($uagent =~ m#$bot_list#i);
+    ++$ip_list{$ip}{'hack'} if ($request =~ m#$bot_bait#i);
+    ++$ip_list{$ip}{'hack'} if ($request !~ m#//($san_list)#i);
+    ++$ip_list{$ip}{'hack'} if ($status == '400'); # malformed requests
+    ++$ip_list{$ip}{'hack'} if ($request =~ m#GET\s+/zimbra\s+HTTP#); # malformed requests
 
     # clean up if data is missing
     $request = 'stealth request - exploit attemped' if ($request =~ m#^$#);
@@ -215,21 +234,23 @@ sub setlists {
     # no need for HTTP/1.1, etc on request
     $request =~ s#HTTP/.*##i if ($request =~ /http/i);  
 
-    my $i = ++$ip_list{$attacker}{'count'} - 1;
-    $ip_list{$attacker}{'request'}[$i] = $request; # count of requests per ip
-    $ip_list{$attacker}{'status'}[$i] = $status;
+    my $i = ++$ip_list{$ip}{'count'} - 1;
+    $ip_list{$ip}{'request'}[$i] = $request; # count of requests per ip
+    $ip_list{$ip}{'status'}[$i] = $status;
 
     # reuse this second field to display others columns
-    $ip_list{$attacker}{'uagent'}[$i] = $uagent;   # default
-    $ip_list{$attacker}{'uagent'}[$i] = $date if ($display =~ m#date#i);
-    $ip_list{$attacker}{'uagent'}[$i] = $upstream if ($display =~ m#upstream#i);
-    $ip_list{$attacker}{'uagent'}[$i] = $bytes if ($display =~ m#bytes#i);
-    $ip_list{$attacker}{'uagent'}[$i] = $port if ($display =~ m#port#i);
-    $ip_list{$attacker}{'uagent'}[$i] = $referrer if ($display =~ m#referrer#i);
+    $ip_list{$ip}{'uagent'}[$i] = $uagent;   # default
+    $ip_list{$ip}{'uagent'}[$i] = $date if ($display =~ m#date#i);
+    $ip_list{$ip}{'uagent'}[$i] = $upstream if ($display =~ m#upstream#i);
+    $ip_list{$ip}{'uagent'}[$i] = $bytes if ($display =~ m#bytes#i);
+    $ip_list{$ip}{'uagent'}[$i] = $port if ($display =~ m#port#i);
+    $ip_list{$ip}{'uagent'}[$i] = $referrer if ($display =~ m#referrer#i);
 
 
     # Store off status code counts aware of usertype request. This is for the printCode
     $PossibleStatusCodes{$status}{'count'}++;
+
+#print Dumper \%ip_list;
 
     return;
 }
@@ -272,14 +293,14 @@ sub printRequests {
 	   $hack = 100 if (exists $ip_list{$attacker}{'hack'});
 	  
 	   # print the requests per ip address
-	   for ($i=0; $i < $#{$ip_list{$attacker}{'request'}}+1; $i++)
+	   for (my $i=0; $i < $#{$ip_list{$attacker}{'request'}}+1; $i++)
 	   {
 	       my $request = $ip_list{$attacker}{'request'}[$i];
 	       my $uagent = $ip_list{$attacker}{'uagent'}[$i];
 	       my $status = $ip_list{$attacker}{'status'}[$i];
 
                # printing by status code 
-	       next if (($pstatus ne '') && ($status !~ /$pstatus/));
+	       next if (($pstatus ne '') && (!($status =~ /$pstatus/)));
 	       $hitstatus++;
 
                printf ("\t[%4d] %s %s", $status,$request, $uagent);
@@ -311,11 +332,11 @@ sub getSanList {
    open my $fh, "-|","openssl s_client -connect 127.0.0.1:443 < /dev/null 2> /dev/null | openssl x509 -noout -text | grep DNS:" or die $!;
 
    my ($san);
-   $san=<$fh>;
-   $san =~ s#DNS:##gp;
-   $san =~ s#,#|#gp;
-   $san =~ s#\s+##gp;
-   $san =~ s#\.#\\.#gp;
+   $san_list=<$fh>;
+   $san_list =~ s#DNS:##gp;
+   $san_list =~ s#,#|#gp;
+   $san_list =~ s#\s+##gp;
+   $san_list =~ s#\.#\\.#gp;
 
    close($fh);
 }
@@ -324,25 +345,13 @@ sub getSanList {
 # SECTION -  GET input parameters
 #========================================================================
 # Get the command line parameters for processing
-    my $fcolor = 'CYAN';    # GREEN, etc
-    local $display = 'uagent'; # default user agent
-    local $srcip = '@';
-    local $search = '';
-    my $statuscnt = 0;      #default not to print status codes
-    local $pstatus = '';       #default not to print status codes
-    local $localUser = 0;   #default not to include localusers 
-    my $IPlist = 0;         #print ip addresses
-    local $ipset = 0;       #print local ip addresses in ipset format 
-    my $initIPset = 0;      #show how to create an ipset
-    my ($help, $dbug) = 0;
-    local $usertype = 'attacker';
     &GetOptions("fcolor=s" => \$fcolor,  # %%% ToDo
                 "display=s" => \$display,
                 "srcip=s" => \$srcip,
-                "file=s" => \$file,
+                "file=s" => \$nginx_access_log,
                 "logDir=s" => \$logDir,
                 "search=s" => \$search,
-                "debug" => \$dbug,       # turn on debugging
+                "debug" => \$debug,       # turn on debugging
                 "localUser" => \$localUser,  # turn on localuser
                 "IPlist" => \$IPlist,  # print out ip's in a list format
                 "ipset" => \$ipset,  
@@ -362,17 +371,17 @@ getSanList;
 
 
 #========================================================================
-# SECTION -  PARSE audit.log files & process accordingly
+# SECTION -  PARSE audit.log nginx_access_logs & process accordingly
 #========================================================================
 #chdir "/opt/zimbra/log";
 chdir "$logDir";
 
 #for (glob 'nginx.access.log*') {
 #for (glob 'nginx.access.log') {
-for (glob $file) {
+for (glob $nginx_access_log) {
 
   $nginx_log = $_ eq 'nginx.access.log' ? 1 : 0;
-  #print "Opening file $_";
+  #print "Opening nginx_access_log $_";
   open (IN, sprintf("zcat -f %s |", $_))
        or die("Can't open pipe from command 'zcat -f $nginx_log' : $!\n");
 
