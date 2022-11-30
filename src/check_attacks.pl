@@ -37,7 +37,7 @@ my $nginx_access_log="nginx.access.log*";
 # SECTION -  BOTS (listed in user agent) and their bait
 #========================================================================
 my $bot_list = "zgrab|Bot|python|curl|lwp|wget|http|parser|cyberwarcon";
-my $bot_bait = "namespaces|wp-includes|pods|\.jsp";
+my $bot_bait = "logon\.aspx|jnamespaces|wp-includes|pods|\.jsp";
 my $san_list = '';
 
 my $pstatus = '';       #default not to print status codes
