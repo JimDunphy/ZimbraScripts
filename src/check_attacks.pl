@@ -223,7 +223,7 @@ sub setlists {
     ++$ip_list{$ip}{'hack'} if (($request =~ m#^-#) || ($uagent =~ m#^-$#));
     ++$ip_list{$ip}{'hack'} if ($uagent =~ m#$bot_list#i);
     ++$ip_list{$ip}{'hack'} if ($request =~ m#$bot_bait#i);
-    ++$ip_list{$ip}{'hack'} if ($request !~ m#//($san_list)#i);
+    ++$ip_list{$ip}{'hack'} if ($request !~ m#($san_list)#i);
     ++$ip_list{$ip}{'hack'} if ($status == '400'); # malformed requests
     ++$ip_list{$ip}{'hack'} if ($request =~ m#GET\s+/zimbra\s+HTTP#); # malformed requests
 
@@ -337,6 +337,7 @@ sub getSanList {
    $san_list =~ s#,#|#gp;
    $san_list =~ s#\s+##gp;
    $san_list =~ s#\.#\\.#gp;
+   $san_list =~ s#\*#\\*#gp;	#wild card domains
 
    close($fh);
 }
