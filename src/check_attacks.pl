@@ -77,8 +77,8 @@ usage: % check_attacker.pl
         [--srcip=<ip address>]
         [--search='regex of search']
         [--localUser ]
-        [--logDir ]
-        [--nginx_access_log ]
+        [--logDir=`pwd` ]
+        [--file=nginx.access.log ]
         [--IPlist ]
 	[--statuscnt]
 	[--display="date|upstream|bytes|port|referrer]
@@ -188,20 +188,25 @@ sub setlists {
 
     #%%% BEGIN STEP 1 
     # noise (filter some of this out) - this won't be saved.
+    return if ($uagent =~ /uptimerobot/i);	# self-induced - If you use a bot to measure uptime 
+
     return if ($request =~ /favicon/i);
     # %%% GET / HTTP is a problem with a 200 status. Both users and bots look the same. Need additional information so noise for now
     return if (($status eq '200') && ($request =~ m#GET\s+/\s+HTTP#i)); # noise for now
-    if ($status =~ m#404|499|500#)
+    if ($status =~ m#401|403|404|499|500#)
     {
        return if ($request =~ /EWS/i);
+       return if ($request =~ /Briefcase/i);
+       return if ($request =~ m#service/home/#i);
        return if ($request =~ /apple-touch/i);
-       return if ($request =~ /ActiveSync/i);	# %%% can happen with 499/500 codes
+       return if ($request =~ /ActiveSync/i);	# %%% can happen with 401/403/499/500 codes
+
     }
 
     #  Normal Zimbra user stream found with 
     #  check_attack --usertype=local
     $ip_list{$ip}{'ourUser'} = 1 if (($status eq '200') && ($request =~ m#(jsessionid|adminPreAuth|st=conversation)#));
-    $ip_list{$ip}{'ourUser'} = 1 if (($status eq '200') && ($request =~ m#(ActiveSync\?User=)#));
+    $ip_list{$ip}{'ourUser'} = 1 if (($status eq '200') && ($request =~ m#(ActiveSync)#i));
     $ip_list{$ip}{'ourUser'} = 1 if ((($status eq '200') && $request =~ /POST/) && ($request =~ m#soap|NoOpRequest#i));
     # more general case with service/soap
     $ip_list{$ip}{'ourUser'} = 1 if ((($status eq '200') && $request =~ /POST/) && ($request =~ m#service/soap#));
@@ -333,6 +338,7 @@ sub getSanList {
 
    my ($san);
    $san_list=<$fh>;
+
    $san_list =~ s#DNS:##gp;
    $san_list =~ s#,#|#gp;
    $san_list =~ s#\s+##gp;
@@ -390,6 +396,9 @@ for (glob $nginx_access_log) {
   {
 
    my($ip, $port, $remuser, $date, $request, $status, $bytes, $referrer, $uagent, $upstream) = /^([^:\s]+):?(\d*)\s+(?:-\s)([^\s]+)\s+\[([^\s+]+)[^\]]+\]\s+"([^"]*)"\s+(\d+)\s(\d+)\s+"([^"]*)"\s"([^"]*)"\s+"([^"]*)"/is;
+
+   next if (! defined $ip );		# have seen double ip entries in a log so we punt
+
 #print "ip [$ip] ";
 #print "remuser [$remuser] ";
 #print "port is [$port] ";
