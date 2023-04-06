@@ -208,6 +208,7 @@ sub setlists {
     $ip_list{$ip}{'ourUser'} = 1 if (($status eq '200') && ($request =~ m#(jsessionid|adminPreAuth|st=conversation)#));
     $ip_list{$ip}{'ourUser'} = 1 if (($status eq '200') && ($request =~ m#(ActiveSync)#i));
     $ip_list{$ip}{'ourUser'} = 1 if ((($status eq '200') && $request =~ /POST/) && ($request =~ m#soap|NoOpRequest#i));
+    $ip_list{$ip}{'ourUser'} = 1 if (($status =~ m#207|200#) && $request =~ m#REPORT|PROPFIND#i && $request =~ m#dav|users#i);
     # more general case with service/soap
     $ip_list{$ip}{'ourUser'} = 1 if ((($status eq '200') && $request =~ /POST/) && ($request =~ m#service/soap#));
 
