@@ -193,13 +193,13 @@ sub setlists {
     return if ($request =~ /favicon/i);
     # %%% GET / HTTP is a problem with a 200 status. Both users and bots look the same. Need additional information so noise for now
     return if (($status eq '200') && ($request =~ m#GET\s+/\s+HTTP#i)); # noise for now
-    if ($status =~ m#401|403|404|499|500#)
+    if ($status =~ m#401|403|404|499|500|502#)
     {
        return if ($request =~ /EWS/i);
        return if ($request =~ /Briefcase/i);
        return if ($request =~ m#service/home/#i);
        return if ($request =~ /apple-touch/i);
-       return if ($request =~ /ActiveSync/i);	# %%% can happen with 401/403/499/500 codes
+       return if ($request =~ /ActiveSync/i);	# %%% can happen with 401/403/499/500/502 codes
 
     }
 
