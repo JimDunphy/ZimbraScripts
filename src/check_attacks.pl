@@ -42,6 +42,7 @@ my $san_list = '';
 
 my $pstatus = '';       #default not to print status codes
 my $ipset = 0;       #print local ip addresses in ipset format 
+my $fail2ban = 0;       #print ip addresses in fail2ban format 
 my $fcolor = 'CYAN';    # GREEN, etc
 my $display = 'uagent'; # default user agent
 my $srcip = '@';
@@ -54,18 +55,18 @@ my ($help, $debug) = 0;
 my $usertype = 'attacker';
 
 # pre-declare Globals
-use vars qw( $debug $localUser $pstatus $ipset $search $display $attacker $usertype $srcip $msgcolor $nginx_log );
+use vars qw( $debug $localUser $pstatus $fail2ban $ipset $search $display $attacker $usertype $srcip $msgcolor $nginx_log );
 
 #========================================================================
 # SECTION -  FUNCTIONS
 #========================================================================
 # Displays program usage
 
-my $PROJECT="https://github.com/JimDunphy/ZimbraScripts/blob/master/src/check_attacks.pl";
-my $VER="0.8.13";
+my $PROJECT="https://raw.githubusercontent.com/JimDunphy/ZimbraScripts/master/src/check_attacks.pl";
+my $VER="0.9.01";
 
 sub version() {
-  print "$PROJECT\nv$VER\n";
+  print "wget $PROJECT\n#v$VER\n";
   exit;
 }
 
@@ -80,6 +81,8 @@ usage: % check_attacker.pl
         [--logDir=`pwd` ]
         [--file=nginx.access.log ]
         [--IPlist ]
+        [--ipset ]
+        [--fail2ban ]
 	[--statuscnt]
 	[--display="date|upstream|bytes|port|referrer]
 	[--usertype=<attacker|local|all>
@@ -102,9 +105,12 @@ examples:  (-- or - or first few characters of option so not ambigous)
          % check_attacker.pl --IPlist   # print list of ips
          % check_attacker.pl --IPlist --localUser   # print list of ips from local users
          % check_attacker.pl --IPlist --ipset  # print list of ips in ipset format
+         % check_attacker.pl --IPlist --fail2ban  # print list of ips in fail2ban format
          % check_attacker.pl --IPlist -pstatus='40.' --ipset  # print list of ips in ipset format with status code 400..409
+         % check_attacker.pl --IPlist -pstatus='40.' --fail2ban  # print list of ips in fail2ban format with status code 400..409
          % check_attacker.pl --localUser --IPlist   # print list of local ips used by local users
          % check_attacker.pl --IPlist --ipset  | sh # install ip's into ipset 
+         % check_attacker.pl --IPlist --fail2ban  | sh # install ip's into fail2ban 
          % check_attacker.pl --initIPset  # show how to create ipset 
          % check_attacker.pl -fc RED  #change color 
          % check_attacker.pl --usertype=local  # print out strings of only local users
@@ -143,12 +149,22 @@ sub printIPs {
                {
                   my $status = $ip_list{$ip}{'status'}[$i];
                   $smatch = 1, last if ($status =~ /$pstatus/);
-              }
+                }
+          }
+          # print by search
+          elsif ($search ne '')
+          {
+                 $smatch = 1 if $ip_list{$ip}{'tag'};
           } else {
-              $smatch = 1;
+                 $smatch = 1;
           }
          # print all the attacking ip's
-         ($ipset ?  print "ipset add blacklist24hr $ip -exists\n" : print "$ip\n") if $smatch;
+         print "ipset add blacklist24hr $ip -exists\n" if ($ipset && $smatch);
+         print "fail2ban-client set zimbra-nginx $ip\n" if ($fail2ban && $smatch);
+         print "$ip\n" if ($smatch && !$fail2ban && !$ipset);
+
+         #($ipset ?  print "ipset add blacklist24hr $ip -exists\n" : print "$ip\n") if ($smatch);
+         #($fail2ban ?  print "fail2ban-client set zimbra-nginx $ip\n" : print "$ip\n") if ($smatch);
       }
    }
 }
@@ -363,6 +379,7 @@ sub getSanList {
                 "localUser" => \$localUser,  # turn on localuser
                 "IPlist" => \$IPlist,  # print out ip's in a list format
                 "ipset" => \$ipset,  
+                "fail2ban" => \$fail2ban,  
                 "initIPset" => \$initIPset,  
                 "pstatus:s" => \$pstatus,  # turn on status codes
                 "statuscnt" => \$statuscnt,  # print out count of status codes
@@ -435,6 +452,7 @@ for (glob $nginx_access_log) {
 	printIPsetInit;
     } elsif ($IPlist) {
 	printIPs;
+        exit;		# we don't want to add garbage with reset if part of a pipeline
     } else {
         printRequests;
     }
