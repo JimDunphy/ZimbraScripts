@@ -63,7 +63,7 @@ use vars qw( $debug $localUser $pstatus $fail2ban $ipset $search $display $attac
 # Displays program usage
 
 my $PROJECT="https://raw.githubusercontent.com/JimDunphy/ZimbraScripts/master/src/check_attacks.pl";
-my $VER="0.9.01";
+my $VER="0.9.02";
 
 sub version() {
   print "wget $PROJECT\n#v$VER\n";
@@ -99,7 +99,6 @@ examples:  (-- or - or first few characters of option so not ambigous)
          % check_attacker.pl --srcip  '10.10.10.1|20.20.20.2'      #only these ip addresses
          % check_attacker.pl --search  'python|POST'     # if an ip had search term, all requests printed for ip
          % check_attacker.pl --search  '\.jsp|\.php|bot' # if an ip had search term, all requests printed for ip
-         % check_attacker.pl --statuscnt  #print status codes
          % check_attacker.pl --localUser #include local users accounts
          % check_attacker.pl --IPlist   # print list of ips
          % check_attacker.pl --IPlist --localUser   # print list of ips from local users
@@ -108,16 +107,18 @@ examples:  (-- or - or first few characters of option so not ambigous)
          % check_attacker.pl --IPlist -pstatus='40.' --ipset  # print list of ips in ipset format with status code 400..409
          % check_attacker.pl --IPlist -pstatus='40.' --fail2ban  # print list of ips in fail2ban format with status code 400..409
          % check_attacker.pl --localUser --IPlist   # print list of local ips used by local users
-         % check_attacker.pl --IPlist --ipset  | sh # install ip's into ipset 
-         % check_attacker.pl --IPlist --fail2ban  | sh # install ip's into fail2ban 
+         % check_attacker.pl --IPlist --ipset  | sh # format ip's into ipset syntax
+         % check_attacker.pl --IPlist --fail2ban  | sh # format ip's into fail2ban syntax
          % check_attacker.pl --initIPset  # show how to create ipset 
          % check_attacker.pl -fc RED  #change color 
-         % check_attacker.pl --usertype=local  # print out strings of only local users
+         % check_attacker.pl --usertype=local  # print out strings of only local users - ignore Attacker and 100% on output line
          % check_attacker.pl --pstatus='4..'  # print out only those requests with a code of 4XX (ie 403, 404, 499)
          % check_attacker.pl --usertype=all --pstatus='403|500'  # print out only those requests with a code of 403 or 500 for all types (local & attacker)
          % check_attacker.pl --display=date      # default is to display the user agent
          % check_attacker.pl --display=referrer  # default is to display the user agent
          % check_attacker.pl --version | sh      # pull the latest verstion with wget to current working directory
+         % check_attacker.pl --statuscnt         #print status codes
+         % check_attacks.pl --logDir=`pwd` --file=nginx.access.log.5 --pstatus='499' --usertype=all	# client closed before Server response
 
     Status Codes - https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
 END
