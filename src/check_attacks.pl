@@ -95,12 +95,11 @@ usage: % check_attacker.pl
 	--statuscnt: prints out the count for each status return code found
         --help|h: this message
 examples:  (-- or - or first few characters of option so not ambigous)
-         % check_attacker.pl -srcip 10.10.10.1      #only this ip address
-         % check_attacker.pl -srcip  '10.10.10.1|20.20.20.2'      #only these ip addresses
-         % check_attacker.pl -search  'python|POST'     # if an ip had search term, all requests printed for ip
-         % check_attacker.pl -search  '\.jsp|\.php|bot' # if an ip had search term, all requests printed for ip
-         % check_attacker.pl -statuscnt  #print status codes
-         % check_attacker.pl --statuscnt  #print status codes  #same
+         % check_attacker.pl --srcip 10.10.10.1      #only this ip address
+         % check_attacker.pl --srcip  '10.10.10.1|20.20.20.2'      #only these ip addresses
+         % check_attacker.pl --search  'python|POST'     # if an ip had search term, all requests printed for ip
+         % check_attacker.pl --search  '\.jsp|\.php|bot' # if an ip had search term, all requests printed for ip
+         % check_attacker.pl --statuscnt  #print status codes
          % check_attacker.pl --localUser #include local users accounts
          % check_attacker.pl --IPlist   # print list of ips
          % check_attacker.pl --IPlist --localUser   # print list of ips from local users
@@ -118,6 +117,7 @@ examples:  (-- or - or first few characters of option so not ambigous)
          % check_attacker.pl --usertype=all --pstatus='403|500'  # print out only those requests with a code of 403 or 500 for all types (local & attacker)
          % check_attacker.pl --display=date      # default is to display the user agent
          % check_attacker.pl --display=referrer  # default is to display the user agent
+         % check_attacker.pl --version | sh      # pull the latest verstion with wget to current working directory
 
     Status Codes - https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
 END
