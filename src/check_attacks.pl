@@ -63,7 +63,7 @@ use vars qw( $debug $localUser $pstatus $fail2ban $ipset $search $display $attac
 # Displays program usage
 
 my $PROJECT="https://raw.githubusercontent.com/JimDunphy/ZimbraScripts/master/src/check_attacks.pl";
-my $VER="0.9.02";
+my $VER="0.9.03";
 
 sub version() {
   print "wget $PROJECT\n#v$VER\n";
@@ -160,11 +160,11 @@ sub printIPs {
                  $smatch = 1;
           }
          # print all the attacking ip's
-         print "ipset add blacklist24hr $ip -exists\n" if ($ipset && $smatch);
+         print "ipset add blacklist24hr $ip -exist\n" if ($ipset && $smatch);
          print "fail2ban-client set zimbra-nginx $ip\n" if ($fail2ban && $smatch);
          print "$ip\n" if ($smatch && !$fail2ban && !$ipset);
 
-         #($ipset ?  print "ipset add blacklist24hr $ip -exists\n" : print "$ip\n") if ($smatch);
+         #($ipset ?  print "ipset add blacklist24hr $ip -exist\n" : print "$ip\n") if ($smatch);
          #($fail2ban ?  print "fail2ban-client set zimbra-nginx $ip\n" : print "$ip\n") if ($smatch);
       }
    }
