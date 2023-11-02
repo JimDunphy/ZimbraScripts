@@ -30,6 +30,7 @@ usage() {
      $ check_sa.sh file.txt
      $ check_sa.sh -n file.txt
      $ check_sa.sh -flags DNS,check file.txt
+     $ check_sa.sh --log
      $ check_sa.sh --lint
 
     output: file.txt.out
@@ -39,6 +40,7 @@ usage() {
     --flags DNS,bayes,check
     --lint
     --net (do network tests - remove -L option)
+    --log
     --help
 
   see: https://wiki.apache.org/spamassassin/DebugChannels for -D 'dns,check'
@@ -51,7 +53,7 @@ usage() {
 nflags="-L"
 
 #
-args=$(getopt -l "flags:,help,lint,net" -o "f:hln" -- "$@")
+args=$(getopt -l "log,flags:,help,lint,net" -o "f:hln" -- "$@")
 
 eval set -- "$args"
 
@@ -73,6 +75,10 @@ while [ $# -ge 1 ]; do
                         spamassassin --lint
 			exit 0
                         ;;
+                --log)
+                        grep "SA check" /var/log/zimbra.log | awk '{printf "Time:%s %d ms]\n", $10,$11}'
+			exit 0
+                        ;;
                 -h|--help)
                         usage
                         exit 0
@@ -92,7 +98,7 @@ if [ ! -f $file ] || [ -z $file ]; then
    exit 1;
 fi
 
-#echo "spamassassin -D $flags $nflags" ' < ' "$file"  ' > ' "$file".out
+echo "spamassassin -D $flags $nflags" ' < ' "$file"  ' > ' "$file".out
 #spamassassin -D $flags $nflags < "$file" > /dev/null 2> "$file".out
 spamassassin -D $flags $nflags < "$file" 2>&1 >/dev/null | sed  's/__LOWER_E,//g;s/__E_LIKE_LETTER,//g' > "$file".out
 
