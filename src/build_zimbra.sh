@@ -9,6 +9,7 @@
 # CAVEAT: Command option --init needs to run as root. Script uses sudo and prompts user when required.
 #
 #
+buildVersion=1.0
 
 # Fine the latest zm-build we can check out
 function clone_until_success() {
@@ -118,7 +119,7 @@ function get_tags_8 ()
 }
 
 # main program logic starts here
-args=$(getopt -l "init,tags,tags8,tags9,help,clean,version:" -o "d:h" -- "$@")
+args=$(getopt -l "init,tags,tags8,tags9,help,clean,version:" -o "d:hV" -- "$@")
 eval set -- "$args"
 
 while [ $# -ge 1 ]; do
@@ -130,6 +131,10 @@ while [ $# -ge 1 ]; do
                     ;;
                 --init)
                     init
+                    exit 0
+                    ;;
+                -V)
+                    echo "Version: $buildVersion"
                     exit 0
                     ;;
                 --clean)
@@ -185,14 +190,16 @@ esac
 # pass these on to the Zimbra build.pl script
 # 10.0.0 | 9.0.0 | 8.8.15 are possible values
 TAGS_STRING=$tags
-LATEST_TAG_VERSION=$(echo "$tags" | rev | cut -d ',' -f 1)
+LATEST_TAG_VERSION=$(echo "$tags" | awk -F',' '{print $NF}')
+PATCH_LEVEL=$(echo "$tags" | cut -d ',' -f 1 | awk -F'.' '{print $NF}')
 
 # find appropriate branch to checkout
 clone_until_success "$tags" 
 
 cd zm-build
 # Build the source tree with the specified parameters
-ENV_CACHE_CLEAR_FLAG=true ./build.pl --ant-options -DskipTests=true --git-default-tag="$TAGS_STRING" --build-release-no="$LATEST_TAG_VERSION" --build-type=FOSS --build-release=DAFFODIL --build-release-candidate=GA --build-thirdparty-server=files.zimbra.com --no-interactive
+ENV_CACHE_CLEAR_FLAG=true ./build.pl --ant-options -DskipTests=true --git-default-tag="$TAGS_STRING" --build-release-no="$LATEST_TAG_VERSION" --build-type=FOSS --build-release=DAFFODIL --build-release-candidate=GA --build-thirdparty-server=files.zimbra.com --no-interactive --build-release-candidate=P$PATCH_LEVEL
+cd ..
 
 # show completed builds
 find BUILDS -name \*.tgz -print
