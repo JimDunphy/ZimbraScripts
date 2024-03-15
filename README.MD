@@ -1,3 +1,5 @@
+# Some examples of scripts in src
+
 # check_login.pl
 
 # Purpose
@@ -75,6 +77,9 @@ bldd1@example.com
 The failed report happens after the ip access report per user in the same list. A count of 1 for example for a failed doesn't mean they had a successful login. In other words, if you see a fail with an ip address and it has a count of 1 but the ip address has a count of 2 above. That means one time was successful and the other time was failed.
 
 # Other Scripts
+
+# build_zimbra.sh
+Automated script to build Zimbra FOSS for version 8.8.15, 9.0.0, and 10.0.0
 
 # zmcopyTrain
 Copies ham/spam to /tmp to view how uses are training spam
