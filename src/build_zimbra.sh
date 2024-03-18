@@ -193,7 +193,7 @@ esac
 TAGS_STRING=$tags
 LATEST_TAG_VERSION=$(echo "$tags" | awk -F',' '{print $NF}')
 PATCH_LEVEL=$(echo "$tags" | cut -d ',' -f 1 | awk -F'.' '{print $NF}' | sed 's/[pP]//')
-PATCH_LEVEL="10.0.0_P${PATCH_LEVEL}"
+PATCH_LEVEL="GA_P${PATCH_LEVEL}"
 
 # find appropriate branch to checkout
 clone_until_success "$tags" 
