@@ -9,7 +9,7 @@
 # CAVEAT: Command option --init needs to run as root. Script uses sudo and prompts user when required.
 #
 #
-buildVersion=1.1
+buildVersion=1.3
 
 # Fine the latest zm-build we can check out
 function clone_until_success() {
@@ -73,6 +73,7 @@ function usage() {
         --tags8			#create tags for version 8
         --tags9			#create tags for version 9
         -V                      #version of this program
+        --dry-run               #show what we would do
         --help
 
        Example usage:
@@ -81,6 +82,10 @@ function usage() {
 
        $0 --clean; $0 --version 9  #build version 9 leaving version 10 around
        $0 --clean; $0 --version 8  #build version 8 leaving version 9, 10 around
+       $0 --clean; $0 --version 10 --dry-run  #see how to build version 10
+       $0 --clean; $0 --version 10 --dry-run | sh  #build version 10
+              or
+       $0 --clean; $0 --version 10  #build version 10
   "
 }
 
@@ -120,7 +125,8 @@ function get_tags_8 ()
 }
 
 # main program logic starts here
-args=$(getopt -l "init,tags,tags8,tags9,help,clean,version:" -o "d:hV" -- "$@")
+dryrun=0
+args=$(getopt -l "init,dry-run,tags,tags8,tags9,help,clean,version:" -o "hV" -- "$@")
 eval set -- "$args"
 
 while [ $# -ge 1 ]; do
@@ -134,12 +140,15 @@ while [ $# -ge 1 ]; do
                     init
                     exit 0
                     ;;
+                --dry-run)
+                    dryrun=1
+                    ;;
                 -V)
                     echo "Version: $buildVersion"
                     exit 0
                     ;;
                 --clean)
-                    /bin/rm -rf zm-* j* neko* ant* ical*
+                    /bin/rm -rf zm-* j* neko* ant* ical* .staging*
                     exit 0
                     ;;
                 --version)
@@ -172,14 +181,25 @@ case "$version" in
   8)
     if [ ! -f tags_for_8.txt ]; then get_tags_8; fi
     tags="$(cat tags_for_8.txt)"
+    LATEST_TAG_VERSION=$(echo "$tags" | awk -F',' '{print $NF}')
+    PATCH_LEVEL=$(echo "$tags" | cut -d ',' -f 1 | awk -F'.' '{print $NF}' | sed 's/[pP]//')
+    PATCH_LEVEL="GA_P${PATCH_LEVEL}"
+    BUILD_RELEASE="Joule"
     ;;
   9)
     if [ ! -f tags_for_9.txt ]; then get_tags_9; fi
     tags="$(cat tags_for_9.txt)"
+    LATEST_TAG_VERSION=$(echo "$tags" | awk -F',' '{print $NF}')
+    PATCH_LEVEL=$(echo "$tags" | cut -d ',' -f 1 | awk -F'.' '{print $NF}' | sed 's/[pP]//')
+    PATCH_LEVEL="GA_P${PATCH_LEVEL}"
+    BUILD_RELEASE="Kepler"
     ;;
   10)
     if [ ! -f tags_for_10.txt ]; then get_tags; fi
     tags="$(cat tags_for_10.txt)"
+    PATCH_LEVEL="GA"
+    LATEST_TAG_VERSION=$(echo "$tags" | cut -d ',' -f 1)
+    BUILD_RELEASE="Daffodil"
     ;;
   *)
     echo "Possible values: 8 or 9 or 10"
@@ -191,16 +211,41 @@ esac
 # pass these on to the Zimbra build.pl script
 # 10.0.0 | 9.0.0 | 8.8.15 are possible values
 TAGS_STRING=$tags
-LATEST_TAG_VERSION=$(echo "$tags" | awk -F',' '{print $NF}')
-PATCH_LEVEL=$(echo "$tags" | cut -d ',' -f 1 | awk -F'.' '{print $NF}' | sed 's/[pP]//')
-PATCH_LEVEL="GA_P${PATCH_LEVEL}"
 
-# find appropriate branch to checkout
-clone_until_success "$tags" 
+# Build the source tree with the specified parameters
+if [ $dryrun -eq 1 ]; then
 
 cd zm-build
-# Build the source tree with the specified parameters
-ENV_CACHE_CLEAR_FLAG=true ./build.pl --ant-options -DskipTests=true --git-default-tag="$TAGS_STRING" --build-release-no="$LATEST_TAG_VERSION" --build-type=FOSS --build-release=DAFFODIL --build-release-candidate=GA --build-thirdparty-server=files.zimbra.com --no-interactive --build-release-candidate=$PATCH_LEVEL
+found_version=""
+OLD_IFS="$IFS"
+IFS=","
+for ntag in ${tags} ; do
+    if [ $(git tag -l "$ntag") ]; then
+        found_version="$ntag"
+        break
+    fi
+done
+IFS="${OLD_IFS}"
+
+cat << _END_OF_TEXT
+#!/bin/sh
+
+git clone --depth 1 --branch "$ntag" "git@github.com:Zimbra/zm-build.git"
+cd zm-build
+ENV_CACHE_CLEAR_FLAG=true ./build.pl --ant-options -DskipTests=true --git-default-tag="$TAGS_STRING" --build-release-no="$LATEST_TAG_VERSION" --build-type=FOSS --build-release="$BUILD_RELEASE" --build-thirdparty-server=files.zimbra.com --no-interactive --build-release-candidate=$PATCH_LEVEL
+
+
+_END_OF_TEXT
+exit
+
+else
+
+   # find appropriate branch to checkout
+   clone_until_success "$tags" 
+
+   cd zm-build
+   ENV_CACHE_CLEAR_FLAG=true ./build.pl --ant-options -DskipTests=true --git-default-tag="$TAGS_STRING" --build-release-no="$LATEST_TAG_VERSION" --build-type=FOSS --build-release="$BUILD_RELEASE" --build-thirdparty-server=files.zimbra.com --no-interactive --build-release-candidate=$PATCH_LEVEL
+fi
 cd ..
 
 # show completed builds
