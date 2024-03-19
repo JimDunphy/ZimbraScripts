@@ -9,7 +9,8 @@
 # CAVEAT: Command option --init needs to run as root. Script uses sudo and prompts user when required.
 #
 #
-buildVersion=1.4
+buildVersion=1.6
+copyTag=0.0
 
 # Fine the latest zm-build we can check out
 function clone_until_success() {
@@ -22,6 +23,7 @@ function clone_until_success() {
     if git clone --depth 1 --branch "$tag" "git@github.com:Zimbra/zm-build.git"; then
       echo "Successfully cloned branch $tag"
       echo "git clone --depth 1 --branch $tag git@github.com:Zimbra/zm-build.git"
+      copyTag=$tag
       return
     else
       echo "Failed to clone branch $tag. Trying the next tag..."
@@ -207,30 +209,24 @@ case "$version" in
     ;;
 esac
 
+# %%%
+# A lot of weird logic that probably doesn't need to be there for --dry-run. If you always do a --clean before issuing a command, 
+# none of this would be necessary. 
+
 
 # pass these on to the Zimbra build.pl script
 # 10.0.0 | 9.0.0 | 8.8.15 are possible values
 TAGS_STRING=$tags
+if  [ -d zm-build ] ; then echo "Warning: did you forget to issue --clean first"; echo performing /bin/rm -rf zm-build;  /bin/rm -rf zm-build; fi
+clone_until_success "$tags" >/dev/null 2>&1
 
 # Build the source tree with the specified parameters
 if [ $dryrun -eq 1 ]; then
 
-cd zm-build
-found_version=""
-OLD_IFS="$IFS"
-IFS=","
-for ntag in ${tags} ; do
-    if [ $(git tag -l "$ntag") ]; then
-        found_version="$ntag"
-        break
-    fi
-done
-IFS="${OLD_IFS}"
-
 cat << _END_OF_TEXT
 #!/bin/sh
 
-git clone --depth 1 --branch "$ntag" "git@github.com:Zimbra/zm-build.git"
+git clone --depth 1 --branch "$tag" "git@github.com:Zimbra/zm-build.git"
 cd zm-build
 ENV_CACHE_CLEAR_FLAG=true ./build.pl --ant-options -DskipTests=true --git-default-tag="$TAGS_STRING" --build-release-no="$LATEST_TAG_VERSION" --build-type=FOSS --build-release="$BUILD_RELEASE" --build-thirdparty-server=files.zimbra.com --no-interactive --build-release-candidate=$PATCH_LEVEL
 
@@ -241,7 +237,7 @@ exit
 else
 
    # find appropriate branch to checkout
-   clone_until_success "$tags" 
+   #clone_until_success "$tags" 
 
    cd zm-build
    ENV_CACHE_CLEAR_FLAG=true ./build.pl --ant-options -DskipTests=true --git-default-tag="$TAGS_STRING" --build-release-no="$LATEST_TAG_VERSION" --build-type=FOSS --build-release="$BUILD_RELEASE" --build-thirdparty-server=files.zimbra.com --no-interactive --build-release-candidate=$PATCH_LEVEL
