@@ -9,7 +9,7 @@
 # CAVEAT: Command option --init needs to run as root. Script uses sudo and prompts user when required.
 #
 #
-buildVersion=1.3
+buildVersion=1.4
 
 # Fine the latest zm-build we can check out
 function clone_until_success() {
@@ -184,7 +184,7 @@ case "$version" in
     LATEST_TAG_VERSION=$(echo "$tags" | awk -F',' '{print $NF}')
     PATCH_LEVEL=$(echo "$tags" | cut -d ',' -f 1 | awk -F'.' '{print $NF}' | sed 's/[pP]//')
     PATCH_LEVEL="GA_P${PATCH_LEVEL}"
-    BUILD_RELEASE="Joule"
+    BUILD_RELEASE="JOULE"
     ;;
   9)
     if [ ! -f tags_for_9.txt ]; then get_tags_9; fi
@@ -192,14 +192,14 @@ case "$version" in
     LATEST_TAG_VERSION=$(echo "$tags" | awk -F',' '{print $NF}')
     PATCH_LEVEL=$(echo "$tags" | cut -d ',' -f 1 | awk -F'.' '{print $NF}' | sed 's/[pP]//')
     PATCH_LEVEL="GA_P${PATCH_LEVEL}"
-    BUILD_RELEASE="Kepler"
+    BUILD_RELEASE="KEPLER"
     ;;
   10)
     if [ ! -f tags_for_10.txt ]; then get_tags; fi
     tags="$(cat tags_for_10.txt)"
     PATCH_LEVEL="GA"
     LATEST_TAG_VERSION=$(echo "$tags" | cut -d ',' -f 1)
-    BUILD_RELEASE="Daffodil"
+    BUILD_RELEASE="DAFFODIL"
     ;;
   *)
     echo "Possible values: 8 or 9 or 10"
