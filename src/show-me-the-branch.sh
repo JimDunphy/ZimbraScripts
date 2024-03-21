@@ -7,6 +7,8 @@
 # Demonstration of an inside joke showing the insane process for FOSS builds for each patch release of 10
 #   Provided they stay consistent, it does work however.
 #
+# Ref: https://forums.zimbra.org/viewtopic.php?t=72627
+#
 #
 # usage: Build me zimbra based on tags and not latest checked in.
 #
