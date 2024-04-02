@@ -8,8 +8,13 @@
 #
 # CAVEAT: Command option --init needs to run as root. Script uses sudo and prompts user when required.
 #
+#         %%%
+#         --tags,--tags9, --tags8 do not work with dry-run. The issue is that we have a cached version of the tags. To generate new tags, takes
+#              some time but would be required to figure out tags for a --dry-run for example. Therefore, we exit on tags eventhough --dry-run
+#              was specified. We will however have a new cached list of tags that future builds can use. Chicken/Egg problem for --dry-run.
 #
-buildVersion=1.6
+#
+buildVersion=1.7
 copyTag=0.0
 
 # Fine the latest zm-build we can check out
@@ -104,6 +109,8 @@ function get_tags ()
 {
   # requires that it be run in the local directory
   pushd zimbra-tag-helper
+  # %%% not sure but thinking in the future for version 10.1.0
+  if [ -d "zm-build" ] ; then /bin/rm -rf zm-build; fi
   ./zm-build-filter-tags-10.sh > ../tags_for_10.txt
   popd
 }
@@ -112,6 +119,7 @@ function get_tags_9 ()
 {
   # requires that it be run in the local directory
   pushd zimbra-tag-helper
+  if [ -d "zm-build" ] ; then /bin/rm -rf zm-build; fi
   ./zm-build-filter-tags-9.sh > ../tags_for_9.txt
   popd
 }
@@ -119,6 +127,7 @@ function get_tags_9 ()
 function get_tags_8 ()
 {
   # requires that it be run in the local directory
+  # This is EOL already
   pushd zimbra-tag-helper
   ./zm-build-filter-tags-8.sh > ../tags_for_8.txt
   # odd case of how we do release_no
@@ -150,6 +159,8 @@ while [ $# -ge 1 ]; do
                     exit 0
                     ;;
                 --clean)
+                    # %%% zimbra-tag-helper has a copy of zm-build.  Probably need to remove that at some point too
+                    #     currently removing zm-build in explict tags,tags9 option. What about --dry-run?
                     /bin/rm -rf zm-* j* neko* ant* ical* .staging*
                     exit 0
                     ;;
