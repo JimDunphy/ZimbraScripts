@@ -13,8 +13,10 @@
 #              some time but would be required to figure out tags for a --dry-run for example. Therefore, we exit on tags eventhough --dry-run
 #              was specified. We will however have a new cached list of tags that future builds can use. Chicken/Egg problem for --dry-run.
 #
-#
-buildVersion=1.7
+# Edit: V Sherwood 4/5/2024
+#         Enhance script so that specific releases can be requested rather than just the latest release of a particular Zimbra series
+
+buildVersion=1.8
 copyTag=0.0
 
 # Fine the latest zm-build we can check out
@@ -86,6 +88,7 @@ function usage() {
        Example usage:
        $0 --init               # first time only
        $0 --version 10         # build version 10
+       $0 --version 10.0.6     # build version 10.0.6
 
        $0 --clean; $0 --version 9  #build version 9 leaving version 10 around
        $0 --clean; $0 --version 8  #build version 8 leaving version 9, 10 around
@@ -133,6 +136,41 @@ function get_tags_8 ()
   # odd case of how we do release_no
   echo ',8.8.15' >> ../tags_for_8.txt
   popd
+}
+
+function strip_newer_tags()
+{
+  # Trims off the leading tags that are newer than the requested release
+  
+  # Add [,] to both strings to avoid matching extended release numbers. e.g. 10.0.0-GA when searching for 10.0.0, or 9.0.0.p32.1 when searching for 9.0.0.p32
+  tagscomma="$tags,"
+  releasecomma="$release,"
+
+  # earlier_releases will either contain the entire tags string if the requested release wasn't found 
+  # or the tail of the tags string after the requested release (which could be nothing if the earliest release was requested)
+  earlier_releases=${tagscomma#*$releasecomma}
+
+  if [ -n "${earlier_releases}" ]; then
+    # Some earlier releases in tags - strip the [,] we added for searching
+    earlier_releases=${earlier_releases%?}
+  fi
+ 
+  if [ "$tags" == "$earlier_releases" ]; then
+    # If earlier_releases contains everything then the requested release does not exist
+    echo "Bad release number requested - $release!"
+	echo "You must specify a release number from the tag list: $tags"
+    exit 0
+  else
+    if [ -n "$earlier_releases" ]; then
+      # There are earlier_releases. Append release[,]earlier_releases to make new tags string for building
+      tags="$release,$earlier_releases"
+    else
+      # There are no earlier_releases. Set tags string to release for building
+      tags="$release"
+    fi
+    echo "Building $release!"
+    echo "Tags for build: $tags"
+  fi
 }
 
 # main program logic starts here
@@ -189,11 +227,29 @@ while [ $# -ge 1 ]; do
         shift
 done
 
+# check if a specific release version was requested - Format n.n.n[.p[.n]] 
+
+IFS='.' read -ra version_array <<< "$version"
+major="${version_array[0]}"
+minor="${version_array[1]}"
+rev="${version_array[2]}"
+
+if [ -z "${minor}" ] && [ -z "${rev}" ]; then
+  echo "Requested latest Zimbra $major release"
+else
+  release="${version}"
+  version="${major}"
+  echo "Requested Zimbra $release release"
+fi
+
 # tags is a comma seperated list of tags used to make a release to build
 case "$version" in
   8)
     if [ ! -f tags_for_8.txt ]; then get_tags_8; fi
     tags="$(cat tags_for_8.txt)"
+    if [ -n "$release" ]; then
+      strip_newer_tags $tags $release
+    fi
     LATEST_TAG_VERSION=$(echo "$tags" | awk -F',' '{print $NF}')
     PATCH_LEVEL=$(echo "$tags" | cut -d ',' -f 1 | awk -F'.' '{print $NF}' | sed 's/[pP]//')
     PATCH_LEVEL="GA_P${PATCH_LEVEL}"
@@ -202,6 +258,9 @@ case "$version" in
   9)
     if [ ! -f tags_for_9.txt ]; then get_tags_9; fi
     tags="$(cat tags_for_9.txt)"
+    if [ -n "$release" ]; then
+      strip_newer_tags $tags $release
+    fi
     LATEST_TAG_VERSION=$(echo "$tags" | awk -F',' '{print $NF}')
     PATCH_LEVEL=$(echo "$tags" | cut -d ',' -f 1 | awk -F'.' '{print $NF}' | sed 's/[pP]//')
     PATCH_LEVEL="GA_P${PATCH_LEVEL}"
@@ -210,6 +269,9 @@ case "$version" in
   10)
     if [ ! -f tags_for_10.txt ]; then get_tags; fi
     tags="$(cat tags_for_10.txt)"
+    if [ -n "$release" ]; then
+      strip_newer_tags $tags $release
+    fi
     PATCH_LEVEL="GA"
     LATEST_TAG_VERSION=$(echo "$tags" | cut -d ',' -f 1)
     BUILD_RELEASE="DAFFODIL"
