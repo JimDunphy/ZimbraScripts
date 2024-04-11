@@ -16,7 +16,7 @@
 # Edit: V Sherwood 4/5/2024
 #         Enhance script so that specific releases can be requested rather than just the latest release of a particular Zimbra series
 
-buildVersion=1.8
+buildVersion=1.9
 copyTag=0.0
 
 # Fine the latest zm-build we can check out
@@ -252,7 +252,7 @@ case "$version" in
     fi
     LATEST_TAG_VERSION=$(echo "$tags" | awk -F',' '{print $NF}')
     PATCH_LEVEL=$(echo "$tags" | cut -d ',' -f 1 | awk -F'.' '{print $NF}' | sed 's/[pP]//')
-    PATCH_LEVEL="GA_P${PATCH_LEVEL}"
+    PATCH_LEVEL="GAP${PATCH_LEVEL}"
     BUILD_RELEASE="JOULE"
     ;;
   9)
@@ -263,7 +263,7 @@ case "$version" in
     fi
     LATEST_TAG_VERSION=$(echo "$tags" | awk -F',' '{print $NF}')
     PATCH_LEVEL=$(echo "$tags" | cut -d ',' -f 1 | awk -F'.' '{print $NF}' | sed 's/[pP]//')
-    PATCH_LEVEL="GA_P${PATCH_LEVEL}"
+    PATCH_LEVEL="GAP${PATCH_LEVEL}"
     BUILD_RELEASE="KEPLER"
     ;;
   10)
