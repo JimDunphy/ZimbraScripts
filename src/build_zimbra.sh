@@ -15,9 +15,27 @@
 #
 # Edit: V Sherwood 4/5/2024
 #         Enhance script so that specific releases can be requested rather than just the latest release of a particular Zimbra series
+#       J Dunphy  4/16/2024 Ref: https://forums.zimbra.org/viewtopic.php?p=313419#p313419
+#         --builder switch and some code recommended from V Sherwood. 
+#
 
-buildVersion=1.9
+buildVersion=1.10
 copyTag=0.0
+builder="GA"
+
+function find_tag() {
+    # find tag that we cloned the zm-build with
+    if [ -d "zm-build" ] ; then 
+       pushd zm-build
+
+       # Get the current branch name
+       copyTag=$(git describe --tags --exact-match)
+
+       # Print the current branch
+       echo "Current branch is: $copyTag"
+      popd
+    fi
+}
 
 # Fine the latest zm-build we can check out
 function clone_until_success() {
@@ -81,13 +99,19 @@ function usage() {
         --tags			#create tags for version 10
         --tags8			#create tags for version 8
         --tags9			#create tags for version 9
+        --upgrade		#echo what needs to be done to upgrade the script
         -V                      #version of this program
         --dry-run               #show what we would do
+        --builder foss          # will add to this format for version 10: GAT{tag}C{$release}${builder}
+                                #GAT1007C1006foss meaning with zmcontrol -v:
+                                #      (built with 10.0.7 tags, and zm_build branch 10.0.6)
         --help
 
        Example usage:
        $0 --init               # first time only
-       $0 --version 10         # build version 10
+       $0 --upgrade            # show how get latest version of this script
+       $0 --upgrade | sh       # overwrite current version of script with latest version from github
+       $0 --version 10         # build latest patch version 10 according to tags
        $0 --version 10.0.6     # build version 10.0.6
 
        $0 --clean; $0 --version 9  #build version 9 leaving version 10 around
@@ -96,6 +120,15 @@ function usage() {
        $0 --clean; $0 --version 10 --dry-run | sh  #build version 10
               or
        $0 --clean; $0 --version 10  #build version 10
+       $0 --clean; $0 --version 10  --builder FOSS #build version 10 with builder tag FOSS
+
+      WARNING: ********************************************************************************
+        the tags are cached. If a new release comes out, you must explicity do this before building if you are using the same directory:
+
+       $0 --clean; $0 --tags
+
+      This is because the tags are cached in a file and need to recalculated again.
+      *****************************************************************************************
   "
 }
 
@@ -175,7 +208,7 @@ function strip_newer_tags()
 
 # main program logic starts here
 dryrun=0
-args=$(getopt -l "init,dry-run,tags,tags8,tags9,help,clean,version:" -o "hV" -- "$@")
+args=$(getopt -l "init,dry-run,tags,tags8,tags9,help,clean,version:,upgrade,builder:" -o "hV" -- "$@")
 eval set -- "$args"
 
 while [ $# -ge 1 ]; do
@@ -187,6 +220,10 @@ while [ $# -ge 1 ]; do
                     ;;
                 --init)
                     init
+                    exit 0
+                    ;;
+                --upgrade)
+                    echo wget 'https://raw.githubusercontent.com/JimDunphy/ZimbraScripts/master/src/build_zimbra.sh' 
                     exit 0
                     ;;
                 --dry-run)
@@ -204,6 +241,10 @@ while [ $# -ge 1 ]; do
                     ;;
                 --version)
                     version=$2
+                    shift
+                    ;;
+                --builder)
+                    builder=$2
                     shift
                     ;;
                 --tags)
@@ -282,6 +323,7 @@ case "$version" in
     ;;
 esac
 
+
 # %%%
 # A lot of weird logic that probably doesn't need to be there for --dry-run. If you always do a --clean before issuing a command, 
 # none of this would be necessary. 
@@ -292,6 +334,19 @@ esac
 TAGS_STRING=$tags
 if  [ -d zm-build ] ; then echo "Warning: did you forget to issue --clean first"; echo performing /bin/rm -rf zm-build;  /bin/rm -rf zm-build; fi
 clone_until_success "$tags" >/dev/null 2>&1
+
+# %%% Suggestion for encoding of build for version 10 moving forward. Are there problems?
+#     https://forums.zimbra.org/viewtopic.php?p=313419#p313419
+#BEGIN version encoding
+echo "value of version is: $version"
+if [ "$version" == "10" ] && [ ! -z "$builder" ]; then
+echo "builder is $builder"
+     if [ -z $release ]; then release=$LATEST_TAG_VERSION; fi
+     find_tag
+     PATCH_LEVEL="GAT${release//./}C${copyTag//./}${builder}"
+fi
+echo "patch_level is $PATCH_LEVEL"
+#END version encoding
 
 # Build the source tree with the specified parameters
 if [ $dryrun -eq 1 ]; then
@@ -308,9 +363,6 @@ _END_OF_TEXT
 exit
 
 else
-
-   # find appropriate branch to checkout
-   #clone_until_success "$tags" 
 
    cd zm-build
    ENV_CACHE_CLEAR_FLAG=true ./build.pl --ant-options -DskipTests=true --git-default-tag="$TAGS_STRING" --build-release-no="$LATEST_TAG_VERSION" --build-type=FOSS --build-release="$BUILD_RELEASE" --build-thirdparty-server=files.zimbra.com --no-interactive --build-release-candidate=$PATCH_LEVEL
