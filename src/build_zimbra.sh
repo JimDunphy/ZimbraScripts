@@ -21,7 +21,6 @@
 
 buildVersion=1.10
 copyTag=0.0
-builder="GA"
 
 function find_tag() {
     # find tag that we cloned the zm-build with
@@ -337,6 +336,7 @@ clone_until_success "$tags" >/dev/null 2>&1
 
 # %%% Suggestion for encoding of build for version 10 moving forward. Are there problems?
 #     https://forums.zimbra.org/viewtopic.php?p=313419#p313419
+# We are currently defaulting to GA if builder isn't defined for PATCH_LEVEL
 #BEGIN version encoding
 echo "value of version is: $version"
 if [ "$version" == "10" ] && [ ! -z "$builder" ]; then
