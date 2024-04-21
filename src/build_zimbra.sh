@@ -13,15 +13,85 @@
 #              some time but would be required to figure out tags for a --dry-run for example. Therefore, we exit on tags eventhough --dry-run
 #              was specified. We will however have a new cached list of tags that future builds can use. Chicken/Egg problem for --dry-run.
 #
+#         .build.number file is populated with a starting build in the format IIInnnn where III is a three digit builder id number, greater 
+#                            than 100 to avoid dropping digits, and nnnn is a starting baseline build counter. e.g. 1010000
+#                            The number will be incremented before the build so the first build would be 1010001. File will be created
+#                            automatically but can also be done manually.  BuilderID can be changed using --BuilderID \d\d\d
+#
+#                            Registered Builders
+#                            101 - FOSS and build_zimbra.sh
+#                            102 - VSherwood
+#                            103 - JDunphy
+#                            150 - Generic
+#
+#                            Note: if you want a reserved number, message JDunphy in Zimbra Community forums or via github
+#
 # Edit: V Sherwood 4/5/2024
 #         Enhance script so that specific releases can be requested rather than just the latest release of a particular Zimbra series
 #       J Dunphy  4/16/2024 Ref: https://forums.zimbra.org/viewtopic.php?p=313419#p313419
 #         --builder switch and some code recommended from V Sherwood. 
+#       V Sherwood 4/18/2024
+#         Store .build.number, and add the Requested Tag, git Cloned Tag and Builder Identifier to BUILD_RELEASE 
+#       J Dunphy 4/21/2024
+#         Cleanup and addition of --BuilderID 
 #
 
-buildVersion=1.10
+buildVersion=1.11
 copyTag=0.0
+builder="FOSS"
+default_number=1011000
+build_number_file=".build.number"
+debug=0
 
+# Initialize builder_id with a default value. Normally read from the file so not used
+builder_id=101
+
+function d_echo() {
+    if [ "$debug" -eq 1 ]; then
+        echo "$@"
+    fi
+}
+
+
+# read the first three digits from a file and set builder_id
+function read_builder_id() {
+
+    # if we don't have a builder_id then create the default and file
+    if [ ! -f "$build_number_file" ]; then update_builder_no; fi
+
+    # establish the builder_id for this
+    if [ -f "$build_number_file" ]; then
+        # Read the first line of the file, extract the first three digits
+        builder_id=$(head -n 1 "$build_number_file" | grep -o '^[0-9]\{3\}')
+        d_echo "Found builder_id is $builder_id"
+        if [ -z "$builder_id" ]; then
+            echo "No three-digit number found at the start of the file."
+            #return 1  # Return a non-zero status to indicate failure
+            exit
+        fi
+    fi
+}
+
+# update .build.number or create it with defaults
+function update_builder_no() {
+    if [ ! -f "$build_number_file" ]; then
+        # File does not exist, create it and populate it with the default number
+        echo $default_number > $build_number_file
+    else
+        # File exists, replace the first three digits with the value of $builder_id
+        sed -i "s/^[0-9]\{3\}/$builder_id/" $build_number_file
+    fi
+}
+
+# validate input is a three-digit number
+function is_three_digit_number() {
+    case $1 in
+        [0-9][0-9][0-9]) return 0 ;;  # exactly three digits
+        *) return 1 ;;                # not exactly three digits
+    esac
+}
+
+# %%% no longer used
 function find_tag() {
     # find tag that we cloned the zm-build with
     if [ -d "zm-build" ] ; then 
@@ -99,6 +169,7 @@ function usage() {
         --tags8			#create tags for version 8
         --tags9			#create tags for version 9
         --upgrade		#echo what needs to be done to upgrade the script
+        --BuilderID [\d\d\d]    # 3 digit value starting at 101-999, updates .build.number file with value
         -V                      #version of this program
         --dry-run               #show what we would do
         --builder foss          # will add to this format for version 10: GAT{tag}C{$release}${builder}
@@ -205,11 +276,39 @@ function strip_newer_tags()
   fi
 }
 
-# main program logic starts here
+# Pads version components from 'release' and zm_build branch represented by 'copyTag' to two digits and constructs 
+#    formatted 'Build Tag' and 'Clone Tag'.
+function zero_pad_tag_and_clone_versions()
+{
+# check if a specific release version was requested - Format n.n.n[.p[.n]] 
+
+echo "Release $release"
+IFS='.' read -ra version_array <<< "$release"
+major="00${version_array[0]}"
+minor="00${version_array[1]}"
+patch="00${version_array[2]}"
+build_tag="${major: -2}${minor: -2}${patch: -2}${version_array[3]}${version_array[4]}"
+echo "Build Tag $build_tag"
+echo "CopyTag $copyTag"
+IFS='.' read -ra version_array <<< "$copyTag"
+major="00${version_array[0]}"
+minor="00${version_array[1]}"
+patch="00${version_array[2]}"
+clone_tag="${major: -2}${minor: -2}${patch: -2}${version_array[3]}${version_array[4]}"
+echo "Clone Tag $clone_tag"
+}
+
+#======================================================================================================================
+#
+#   main program logic starts here
+#
+#======================================================================================================================
+
 dryrun=0
-args=$(getopt -l "init,dry-run,tags,tags8,tags9,help,clean,version:,upgrade,builder:" -o "hV" -- "$@")
+args=$(getopt -l "init,dry-run,tags,tags8,tags9,help,clean,version:,builder:,BuilderID:,debug" -o "hV" -- "$@")
 eval set -- "$args"
 
+# Now process each option in a loop
 while [ $# -ge 1 ]; do
         case "$1" in
                 --)
@@ -221,12 +320,26 @@ while [ $# -ge 1 ]; do
                     init
                     exit 0
                     ;;
+                --debug)
+                    debug=1
+                    shift
+                    ;;
+                --BuilderID)
+                    if [ -z "$2" ] || ! is_three_digit_number "$2"; then
+                        echo "Error: --BuilderID requires a three-digit numeric argument."
+                        exit 1
+                    fi
+                    builder_id=$2
+                    update_builder_no		# will create if doesn't exist
+                    shift 2 
+                    ;;
                 --upgrade)
                     echo wget 'https://raw.githubusercontent.com/JimDunphy/ZimbraScripts/master/src/build_zimbra.sh' 
                     exit 0
                     ;;
                 --dry-run)
                     dryrun=1
+                    shift
                     ;;
                 -V)
                     echo "Version: $buildVersion"
@@ -240,11 +353,11 @@ while [ $# -ge 1 ]; do
                     ;;
                 --version)
                     version=$2
-                    shift
+                    shift 2
                     ;;
                 --builder)
                     builder=$2
-                    shift
+                    shift 2
                     ;;
                 --tags)
                     get_tags
@@ -263,23 +376,28 @@ while [ $# -ge 1 ]; do
                     exit 0
                     ;;
         esac
-
-        shift
 done
 
-# check if a specific release version was requested - Format n.n.n[.p[.n]] 
+# Processing continues with the only possible options to get here: --builder, --BuilderID, --version
 
+# BuilderID should exit if they are not building a version. They were only updating .build.number
+if [[ -n "$builder_id" && -z "$version" ]]; then
+    d_echo "quietly existing as we only one to set builder id"
+    exit 1
+fi
+
+# check if a specific release version was requested - Format n.n.n[.p[.n]] 
 IFS='.' read -ra version_array <<< "$version"
 major="${version_array[0]}"
 minor="${version_array[1]}"
 rev="${version_array[2]}"
 
 if [ -z "${minor}" ] && [ -z "${rev}" ]; then
-  echo "Requested latest Zimbra $major release"
+  d_echo "Requested latest Zimbra $major release"
 else
   release="${version}"
   version="${major}"
-  echo "Requested Zimbra $release release"
+  d_echo "Requested Zimbra $release release"
 fi
 
 # tags is a comma seperated list of tags used to make a release to build
@@ -288,32 +406,36 @@ case "$version" in
     if [ ! -f tags_for_8.txt ]; then get_tags_8; fi
     tags="$(cat tags_for_8.txt)"
     if [ -n "$release" ]; then
-      strip_newer_tags $tags $release
+      strip_newer_tags
+    else
+      release=$(echo "$tags" | cut -d ',' -f 1)
     fi
     LATEST_TAG_VERSION=$(echo "$tags" | awk -F',' '{print $NF}')
-    PATCH_LEVEL=$(echo "$tags" | cut -d ',' -f 1 | awk -F'.' '{print $NF}' | sed 's/[pP]//')
-    PATCH_LEVEL="GAP${PATCH_LEVEL}"
+    PATCH_LEVEL="GA"
     BUILD_RELEASE="JOULE"
     ;;
   9)
     if [ ! -f tags_for_9.txt ]; then get_tags_9; fi
     tags="$(cat tags_for_9.txt)"
     if [ -n "$release" ]; then
-      strip_newer_tags $tags $release
+      strip_newer_tags
+    else
+      release=$(echo "$tags" | cut -d ',' -f 1)
     fi
     LATEST_TAG_VERSION=$(echo "$tags" | awk -F',' '{print $NF}')
-    PATCH_LEVEL=$(echo "$tags" | cut -d ',' -f 1 | awk -F'.' '{print $NF}' | sed 's/[pP]//')
-    PATCH_LEVEL="GAP${PATCH_LEVEL}"
+    PATCH_LEVEL="GA"
     BUILD_RELEASE="KEPLER"
     ;;
   10)
     if [ ! -f tags_for_10.txt ]; then get_tags; fi
     tags="$(cat tags_for_10.txt)"
     if [ -n "$release" ]; then
-      strip_newer_tags $tags $release
+      strip_newer_tags
+    else
+      release=$(echo "$tags" | cut -d ',' -f 1)
     fi
-    PATCH_LEVEL="GA"
     LATEST_TAG_VERSION=$(echo "$tags" | cut -d ',' -f 1)
+    PATCH_LEVEL="GA"
     BUILD_RELEASE="DAFFODIL"
     ;;
   *)
@@ -322,31 +444,28 @@ case "$version" in
     ;;
 esac
 
-
-# %%%
-# A lot of weird logic that probably doesn't need to be there for --dry-run. If you always do a --clean before issuing a command, 
-# none of this would be necessary. 
-
-
 # pass these on to the Zimbra build.pl script
 # 10.0.0 | 9.0.0 | 8.8.15 are possible values
 TAGS_STRING=$tags
-if  [ -d zm-build ] ; then echo "Warning: did you forget to issue --clean first"; echo performing /bin/rm -rf zm-build;  /bin/rm -rf zm-build; fi
+
+# Not cacheing this anymore... we will always regenerate the branch even for --dry-run
+if  [ -d zm-build ] ; then d_echo "Warning: did you forget to issue --clean first"; d_echo performing /bin/rm -rf zm-build;  /bin/rm -rf zm-build; fi
 clone_until_success "$tags" >/dev/null 2>&1
 
-# %%% Suggestion for encoding of build for version 10 moving forward. Are there problems?
-#     https://forums.zimbra.org/viewtopic.php?p=313419#p313419
-# We are currently defaulting to GA if builder isn't defined for PATCH_LEVEL
-#BEGIN version encoding
-echo "value of version is: $version"
-if [ "$version" == "10" ] && [ ! -z "$builder" ]; then
-echo "builder is $builder"
-     if [ -z $release ]; then release=$LATEST_TAG_VERSION; fi
-     find_tag
-     PATCH_LEVEL="GAT${release//./}C${copyTag//./}${builder}"
-fi
-echo "patch_level is $PATCH_LEVEL"
-#END version encoding
+# pads release version and zm_build branch to two digits and constructs formatted $build_tag and $clone_tag
+zero_pad_tag_and_clone_versions
+
+# Add the Requested Tag, git Cloned Tag and Builder Identifier to BUILD_RELEASE.
+# This will be used in naming the .tgz file output
+BUILD_RELEASE="${BUILD_RELEASE}_T${build_tag}C${clone_tag}$builder"
+
+#---------------------------------------------------------------------
+# .build.number file contains 7 digits. The first 3 digits represent the builder_id and the other 4 the build no.
+#  This file is passed to zm-build/build.pl that will look for it or creates it if absent. It will +1 increment contents.
+#  If this file doesn't exist then create a default entry represent FOSS builder id + starting build no.
+#  If the file does exist then set $builder_id to value of the first 3 digits
+#---------------------------------------------------------------------
+read_builder_id
 
 # Build the source tree with the specified parameters
 if [ $dryrun -eq 1 ]; then
@@ -364,12 +483,21 @@ exit
 
 else
 
-   cd zm-build
-   ENV_CACHE_CLEAR_FLAG=true ./build.pl --ant-options -DskipTests=true --git-default-tag="$TAGS_STRING" --build-release-no="$LATEST_TAG_VERSION" --build-type=FOSS --build-release="$BUILD_RELEASE" --build-thirdparty-server=files.zimbra.com --no-interactive --build-release-candidate=$PATCH_LEVEL
+  # Copy .build.number into the cloned zm-build. build.pl will increment the number and save it back before the build starts
+  cp .build.number zm-build
+  cd zm-build
+  ENV_CACHE_CLEAR_FLAG=true ./build.pl --ant-options -DskipTests=true --git-default-tag="$TAGS_STRING" --build-release-no="$LATEST_TAG_VERSION" --build-type=FOSS --build-release="$BUILD_RELEASE" --build-thirdparty-server=files.zimbra.com --no-interactive --build-release-candidate=$PATCH_LEVEL
+  # Copy this .build.number back to the parent folder so --clean will not wipe it out.
+  cp ${build_number_file} ..
 fi
 cd ..
 
+# Log the build
+build="$(cat "$build_number_file")"
+build_tgz="$(ls -1 BUILDS | grep FOSS-$build)"
+build_ts="$(date +%Y%m%d-%H%M%S)"
+echo "$build_ts  $build  $build_tgz" >> ./builds.log
 # show completed builds
 find BUILDS -name \*.tgz -print
 
-exit
+exit 0
