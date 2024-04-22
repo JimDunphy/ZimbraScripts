@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash 
 
 #
 # Author: J Dunphy 3/14/2024
@@ -28,7 +28,6 @@
 #                            103 - JDunphy
 #                            150 - Generic
 #
-#
 # Edit: V Sherwood 4/5/2024
 #         Enhance script so that specific releases can be requested rather than just the latest release of a particular Zimbra series
 #       J Dunphy  4/16/2024 Ref: https://forums.zimbra.org/viewtopic.php?p=313419#p313419
@@ -39,18 +38,16 @@
 #         Cleanup and addition of --builderID 
 #       V Sherwood 4/22/2024
 #         Store .build.builder, default to FOSS if file not found and --builder option not supplied 
+#         Allow --clean to be specified with --version
 #
 
-scriptVersion=1.12
+scriptVersion=1.14
 copyTag=0.0
 default_builder="FOSS"
 default_number=1011000
 build_number_file=".build.number"
 builder_name_file=".build.builder"
 debug=0
-
-# Initialize builder_id with a default value. Normally read from the file so not used
-builder_id=101
 
 function d_echo() {
     if [ "$debug" -eq 1 ]; then
@@ -219,7 +216,6 @@ function usage() {
         --dry-run               #show what we would do
         --builder foss          # an alphanumeric builder name, updates .build.builder file with value
         --help
-        --debug                 # enable extra debugging information
 
        Example usage:
        $0 --init               # first time only
@@ -231,10 +227,7 @@ function usage() {
        $0 --clean; $0 --version 9  #build version 9 leaving version 10 around
        $0 --clean; $0 --version 8  #build version 8 leaving version 9, 10 around
        $0 --clean; $0 --version 10 --dry-run  #see how to build version 10
-       $0 --clean; $0 --version 10 --dry-run | sh  #build version 10
-              or
        $0 --clean; $0 --version 10  #build version 10
-       $0 --clean; $0 --version 10  --builder FOSS #build version 10 with builder tag FOSS
 
       WARNING: ********************************************************************************
         the tags are cached. If a new release comes out, you must explicity do this before building if you are using the same directory:
@@ -262,6 +255,7 @@ function get_tags ()
   # %%% not sure but thinking in the future for version 10.1.0
   if [ -d "zm-build" ] ; then /bin/rm -rf zm-build; fi
   ./zm-build-filter-tags-10.sh > ../tags_for_10.txt
+  /bin/rm -rf zm-build  
   popd
 }
 
@@ -271,6 +265,7 @@ function get_tags_9 ()
   pushd zimbra-tag-helper
   if [ -d "zm-build" ] ; then /bin/rm -rf zm-build; fi
   ./zm-build-filter-tags-9.sh > ../tags_for_9.txt
+  /bin/rm -rf zm-build  
   popd
 }
 
@@ -282,6 +277,7 @@ function get_tags_8 ()
   ./zm-build-filter-tags-8.sh > ../tags_for_8.txt
   # odd case of how we do release_no
   echo ',8.8.15' >> ../tags_for_8.txt
+  /bin/rm -rf zm-build  
   popd
 }
 
@@ -305,7 +301,9 @@ function strip_newer_tags()
   if [ "$tags" == "$earlier_releases" ]; then
     # If earlier_releases contains everything then the requested release does not exist
     echo "Bad release number requested - $release!"
-	echo "You must specify a release number from the tag list: $tags"
+    echo "You must specify a release number from the tag list: $tags"
+    echo "If a recent zimbra release is not in the tags list then re-run the script with option"
+    echo "  --tags/--tags9/--tags8 as appropriate to update your local tags_for_nn.txt file"
     exit 0
   else
     if [ -n "$earlier_releases" ]; then
@@ -390,10 +388,12 @@ while [ $# -ge 1 ]; do
                     exit 0
                     ;;
                 --clean)
-                    # %%% zimbra-tag-helper has a copy of zm-build.  Probably need to remove that at some point too
                     #     currently removing zm-build in explict tags,tags9 option. What about --dry-run?
+                    clean=true
+                    echo "Cleaning up ..."
                     /bin/rm -rf zm-* j* neko* ant* ical* .staging*
-                    exit 0
+                    echo "Done!"
+                    shift
                     ;;
                 --version)
                     version=$2
@@ -427,11 +427,17 @@ while [ $# -ge 1 ]; do
         esac
 done
 
-# Processing continues with the only possible options to get here: --builder, --builderID, --version
-echo "FINISHED PROCESSING OPTIONS"
-# builderID and/or builder should exit if they are not building a version. They were only updating .build.number
-if [[ (-n "$builder_id"  || -n "$builder") && -z "$version" ]]; then
-    d_echo "quietly existing as we only want to set builder id/builder"
+# Processing continues with the only possible options to get here: --builder, --builderID, --clean, --version
+
+# builderID and/or builder and/or clean should exit if they are not building a version.
+if [[ (-n "$builder_id"  || -n "$builder" || -n "$clean") && -z "$version" ]]; then
+    d_echo "quietly exiting as we only want to clean or set builder id/builder"
+    exit 0
+fi
+
+if [[ -z "$version" ]]; then
+    echo "build_zimbra.sh: Version not specified"
+    echo "Try 'build_zimbra.sh --help' for more information."
     exit 1
 fi
 
@@ -497,8 +503,13 @@ esac
 # 10.0.0 | 9.0.0 | 8.8.15 are possible values
 TAGS_STRING=$tags
 
+# If zm-build folder zm-build exists, --clean wasn't run, build will fail, so abort
+if  [ -d zm-build ] ; then 
+    echo "You must run the script with --clean option before each new build (even if rebuilding the same version)"
+    echo "The zm-build process will fail if this is not done!"
+    exit 1
+fi
 # Not cacheing this anymore... we will always regenerate the branch even for --dry-run
-if  [ -d zm-build ] ; then d_echo "Warning: did you forget to issue --clean first"; d_echo performing /bin/rm -rf zm-build;  /bin/rm -rf zm-build; fi
 clone_until_success "$tags" >/dev/null 2>&1
 
 # pads release version and zm_build branch to two digits and constructs formatted $build_tag and $clone_tag
@@ -534,6 +545,9 @@ ENV_CACHE_CLEAR_FLAG=true ./build.pl --ant-options -DskipTests=true --git-defaul
 
 
 _END_OF_TEXT
+# Clean up again after --dry-run
+/bin/rm -rf zm-* j* neko* ant* ical* .staging*
+
 exit
 
 else
@@ -551,6 +565,9 @@ cd ..
 build="$(cat "$build_number_file")"
 build_tgz="$(ls -1 BUILDS | grep FOSS-$build)"
 build_ts="$(date +%Y%m%d-%H%M%S)"
+if [[ -z "${build_tgz}" ]]; then
+    build_tgz="Build failed!"
+fi
 echo "$build_ts  $build  $build_tgz" >> ./builds.log
 # show completed builds
 find BUILDS -name \*.tgz -print
