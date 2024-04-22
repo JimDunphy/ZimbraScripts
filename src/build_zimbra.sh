@@ -6,6 +6,8 @@
 # Purpose:  Build a zimbra FOSS version based on latest tags in the Zimbra FOSS github for version 8.8.15, 9.0.0 or 10.0.0
 #               The end result is there will be a tarball inside the BUILDS directory that can be installed which contains a install.sh script
 #
+# Documentation: https://wiki.zimbra.com/wiki/JDunphy-CompileZimbraScript
+#
 # CAVEAT: Command option --init needs to run as root. Script uses sudo and prompts user when required.
 #
 #         %%%
@@ -13,10 +15,12 @@
 #              some time but would be required to figure out tags for a --dry-run for example. Therefore, we exit on tags eventhough --dry-run
 #              was specified. We will however have a new cached list of tags that future builds can use. Chicken/Egg problem for --dry-run.
 #
+#         .build.builder file is populated with a starting alphanumeric string provided using the --builder option or defaulting to FOSS if none is provided
+#                            builder can be changed at any time using --builder alphanumeric
 #         .build.number file is populated with a starting build in the format IIInnnn where III is a three digit builder id number, greater 
-#                            than 100 to avoid dropping digits, and nnnn is a starting baseline build counter. e.g. 1010000
+#                            than 100 to avoid dropping digits, and nnnn is a starting baseline build counter. e.g. 1011000
 #                            The number will be incremented before the build so the first build would be 1010001. File will be created
-#                            automatically but can also be done manually.  BuilderID can be changed using --BuilderID \d\d\d
+#                            automatically but can also be done manually.  builderID can be changed at any time using --builderID \d\d\d
 #
 #                            Registered Builders
 #                            101 - FOSS and build_zimbra.sh
@@ -24,7 +28,6 @@
 #                            103 - JDunphy
 #                            150 - Generic
 #
-#                            Note: if you want a reserved number, message JDunphy in Zimbra Community forums or via github
 #
 # Edit: V Sherwood 4/5/2024
 #         Enhance script so that specific releases can be requested rather than just the latest release of a particular Zimbra series
@@ -33,14 +36,17 @@
 #       V Sherwood 4/18/2024
 #         Store .build.number, and add the Requested Tag, git Cloned Tag and Builder Identifier to BUILD_RELEASE 
 #       J Dunphy 4/21/2024
-#         Cleanup and addition of --BuilderID 
+#         Cleanup and addition of --builderID 
+#       V Sherwood 4/22/2024
+#         Store .build.builder, default to FOSS if file not found and --builder option not supplied 
 #
 
-buildVersion=1.11
+scriptVersion=1.12
 copyTag=0.0
-builder="FOSS"
+default_builder="FOSS"
 default_number=1011000
 build_number_file=".build.number"
+builder_name_file=".build.builder"
 debug=0
 
 # Initialize builder_id with a default value. Normally read from the file so not used
@@ -52,6 +58,44 @@ function d_echo() {
     fi
 }
 
+
+# read the first line from a file and set builder
+function read_builder() {
+
+    # if we don't have a .build.builder then create the default file
+    if [ ! -f "$builder_name_file" ]; then update_builder; fi
+
+    # establish the builder for this
+    if [ -f "$builder_name_file" ]; then
+        # Read the first line of the file, confirm it is alpha-numreic
+        builder=$(head -n 1 "$builder_name_file")
+        d_echo "Found builder is $builder_id"
+        if [ -z "$builder" ]; then
+            echo "No alpha-numeric builder name found at the start of the file."
+            #return 1  # Return a non-zero status to indicate failure
+            exit
+        fi
+    fi
+}
+
+# update .build.builder or create it with defaults
+function update_builder() {
+    if [ ! -f "$builder_name_file" ]; then
+        # File does not exist, create it and populate it with the default builder
+        echo $default_builder > $builder_name_file
+    else
+        # File exists, overwrite it with $builder
+        echo $builder > $builder_name_file
+    fi
+}
+
+# validate input is alphanumeric
+function is_alphanumeric() {
+    if [[ "$1" =~ [^a-zA-Z0-9] ]]; then
+      return 1
+    fi
+    return 0
+}
 
 # read the first three digits from a file and set builder_id
 function read_builder_id() {
@@ -83,11 +127,12 @@ function update_builder_no() {
     fi
 }
 
-# validate input is a three-digit number
+# validate input is a three-digit number - with first digit non-zero
 function is_three_digit_number() {
     case $1 in
-        [0-9][0-9][0-9]) return 0 ;;  # exactly three digits
-        *) return 1 ;;                # not exactly three digits
+        [1-9][0-9][0-9]) return 0 ;;  # exactly three digits, with first digit non-zero
+        *)
+          return 1 ;;                # not exactly three digits, or first digit is zero
     esac
 }
 
@@ -162,20 +207,19 @@ function init ()
 function usage() {
    echo "
         $0
-        --init			#first time to setup envioroment (only once)
+        --init                  #first time to setup envioroment (only once)
         --version [10|9|8]      #build release 8.8.15 or 9.0.0 or 10.0.0
         --clean                 #remove everything but BUILDS
-        --tags			#create tags for version 10
-        --tags8			#create tags for version 8
-        --tags9			#create tags for version 9
-        --upgrade		#echo what needs to be done to upgrade the script
-        --BuilderID [\d\d\d]    # 3 digit value starting at 101-999, updates .build.number file with value
+        --tags                  #create tags for version 10
+        --tags8                 #create tags for version 8
+        --tags9                 #create tags for version 9
+        --upgrade               #echo what needs to be done to upgrade the script
+        --builderID [\d\d\d]    # 3 digit value starting at 101-999, updates .build.number file with value
         -V                      #version of this program
         --dry-run               #show what we would do
-        --builder foss          # will add to this format for version 10: GAT{tag}C{$release}${builder}
-                                #GAT1007C1006foss meaning with zmcontrol -v:
-                                #      (built with 10.0.7 tags, and zm_build branch 10.0.6)
+        --builder foss          # an alphanumeric builder name, updates .build.builder file with value
         --help
+        --debug                 # enable extra debugging information
 
        Example usage:
        $0 --init               # first time only
@@ -305,7 +349,7 @@ echo "Clone Tag $clone_tag"
 #======================================================================================================================
 
 dryrun=0
-args=$(getopt -l "init,dry-run,tags,tags8,tags9,help,clean,version:,builder:,BuilderID:,debug" -o "hV" -- "$@")
+args=$(getopt -l "init,dry-run,tags,tags8,tags9,help,clean,upgrade,version:,builder:,builderID:,debug" -o "hV" -- "$@")
 eval set -- "$args"
 
 # Now process each option in a loop
@@ -324,9 +368,9 @@ while [ $# -ge 1 ]; do
                     debug=1
                     shift
                     ;;
-                --BuilderID)
+                --builderID)
                     if [ -z "$2" ] || ! is_three_digit_number "$2"; then
-                        echo "Error: --BuilderID requires a three-digit numeric argument."
+                        echo "Error: --builderID requires a three-digit numeric argument, with the first digit non-zero."
                         exit 1
                     fi
                     builder_id=$2
@@ -334,7 +378,7 @@ while [ $# -ge 1 ]; do
                     shift 2 
                     ;;
                 --upgrade)
-                    echo wget 'https://raw.githubusercontent.com/JimDunphy/ZimbraScripts/master/src/build_zimbra.sh' 
+                    echo wget -O $0 'https://raw.githubusercontent.com/JimDunphy/ZimbraScripts/master/src/build_zimbra.sh' 
                     exit 0
                     ;;
                 --dry-run)
@@ -342,7 +386,7 @@ while [ $# -ge 1 ]; do
                     shift
                     ;;
                 -V)
-                    echo "Version: $buildVersion"
+                    echo "Version: $scriptVersion"
                     exit 0
                     ;;
                 --clean)
@@ -356,7 +400,12 @@ while [ $# -ge 1 ]; do
                     shift 2
                     ;;
                 --builder)
+                    if [ -z "$2" ] || ! is_alphanumeric "$2"; then
+                        echo "Error: --builder requires an alphanumeric argument."
+                        exit 1
+                    fi
                     builder=$2
+                    update_builder		# will create if doesn't exist
                     shift 2
                     ;;
                 --tags)
@@ -378,11 +427,11 @@ while [ $# -ge 1 ]; do
         esac
 done
 
-# Processing continues with the only possible options to get here: --builder, --BuilderID, --version
-
-# BuilderID should exit if they are not building a version. They were only updating .build.number
-if [[ -n "$builder_id" && -z "$version" ]]; then
-    d_echo "quietly existing as we only one to set builder id"
+# Processing continues with the only possible options to get here: --builder, --builderID, --version
+echo "FINISHED PROCESSING OPTIONS"
+# builderID and/or builder should exit if they are not building a version. They were only updating .build.number
+if [[ (-n "$builder_id"  || -n "$builder") && -z "$version" ]]; then
+    d_echo "quietly existing as we only want to set builder id/builder"
     exit 1
 fi
 
@@ -455,6 +504,12 @@ clone_until_success "$tags" >/dev/null 2>&1
 # pads release version and zm_build branch to two digits and constructs formatted $build_tag and $clone_tag
 zero_pad_tag_and_clone_versions
 
+#---------------------------------------------------------------------
+# .build.builder file contains the alphanumeric builder name to appear in the build log
+#  If this file doesn't exist then create the file using the default builder name FOSS
+#  If the file does exist then set $builder to the string in the first line
+#---------------------------------------------------------------------
+read_builder
 # Add the Requested Tag, git Cloned Tag and Builder Identifier to BUILD_RELEASE.
 # This will be used in naming the .tgz file output
 BUILD_RELEASE="${BUILD_RELEASE}_T${build_tag}C${clone_tag}$builder"
