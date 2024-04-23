@@ -41,7 +41,7 @@
 #         Allow --clean to be specified with --version
 #
 
-scriptVersion=1.14
+scriptVersion=1.15
 copyTag=0.0
 default_builder="FOSS"
 default_number=1011000
@@ -206,15 +206,16 @@ function usage() {
         $0
         --init                  #first time to setup envioroment (only once)
         --version [10|9|8]      #build release 8.8.15 or 9.0.0 or 10.0.0
+        --debug                 #extra output
         --clean                 #remove everything but BUILDS
         --tags                  #create tags for version 10
         --tags8                 #create tags for version 8
         --tags9                 #create tags for version 9
         --upgrade               #echo what needs to be done to upgrade the script
+        --builder foss          # an alphanumeric builder name, updates .build.builder file with value
         --builderID [\d\d\d]    # 3 digit value starting at 101-999, updates .build.number file with value
         -V                      #version of this program
         --dry-run               #show what we would do
-        --builder foss          # an alphanumeric builder name, updates .build.builder file with value
         --help
 
        Example usage:
@@ -427,6 +428,7 @@ while [ $# -ge 1 ]; do
         esac
 done
 
+# %%% bug... --builder and --builderID will be updated even with dry-run. It happens in the switch statement.
 # Processing continues with the only possible options to get here: --builder, --builderID, --clean, --version
 
 # builderID and/or builder and/or clean should exit if they are not building a version.
@@ -503,13 +505,17 @@ esac
 # 10.0.0 | 9.0.0 | 8.8.15 are possible values
 TAGS_STRING=$tags
 
-# If zm-build folder zm-build exists, --clean wasn't run, build will fail, so abort
-if  [ -d zm-build ] ; then 
-    echo "You must run the script with --clean option before each new build (even if rebuilding the same version)"
-    echo "The zm-build process will fail if this is not done!"
-    exit 1
+# If zm-build folder exists, --clean wasn't run, build will fail, so abort. unless dry-run where we are not building
+if [ -d zm-build ]; then
+    if [ "$dryrun" -eq 0 ]; then
+        echo "You must run the script with --clean option before each new build (even if rebuilding the same version)"
+        echo "The zm-build process will fail if this is not done!"
+        exit 1
+    fi
+    echo "Removing zm-build directory..."
+    /bin/rm -rf zm-build
 fi
-# Not cacheing this anymore... we will always regenerate the branch even for --dry-run
+
 clone_until_success "$tags" >/dev/null 2>&1
 
 # pads release version and zm_build branch to two digits and constructs formatted $build_tag and $clone_tag
@@ -545,8 +551,6 @@ ENV_CACHE_CLEAR_FLAG=true ./build.pl --ant-options -DskipTests=true --git-defaul
 
 
 _END_OF_TEXT
-# Clean up again after --dry-run
-/bin/rm -rf zm-* j* neko* ant* ical* .staging*
 
 exit
 
