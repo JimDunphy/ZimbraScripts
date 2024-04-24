@@ -41,7 +41,7 @@
 #         Allow --clean to be specified with --version
 #
 
-scriptVersion=1.15
+scriptVersion=1.16
 copyTag=0.0
 default_builder="FOSS"
 default_number=1011000
@@ -55,6 +55,33 @@ function d_echo() {
     fi
 }
 
+
+# show the latest tag with each repository
+function show_repository_tags() {
+
+   if [ ! -d zm-zcs ]; then 
+      echo "You need to build a version before running this"
+      echo "  try: $0 --version 10"
+      exit 1
+   fi 
+
+   # Header for the output
+   printf "%-20s %-30s %-20s\n" "Tag Name" "Formatted Date" "Directory"
+
+   for dir in zm* ja* neko* ant* ical*
+   do
+       cd $dir
+       # Get the most recent tag and its creation timestamp
+       read -r timestamp tagname <<< $(git tag --format='%(creatordate:unix)%09%(refname:strip=2)' --sort=-taggerdate | head -n 1)
+   
+       # Convert Unix timestamp to a human-readable date
+       formatted_date=$(date -d @$timestamp '+%Y-%m-%d %H:%M:%S')
+   
+       # Output the values in tabular format, putting the directory name last
+       printf "%-20s %-30s %-20s\n" "$tagname" "$formatted_date" "$dir"
+       cd ..
+   done
+}
 
 # read the first line from a file and set builder
 function read_builder() {
@@ -204,18 +231,21 @@ function init ()
 function usage() {
    echo "
         $0
-        --init                  #first time to setup envioroment (only once)
-        --version [10|9|8]      #build release 8.8.15 or 9.0.0 or 10.0.0
-        --debug                 #extra output
-        --clean                 #remove everything but BUILDS
-        --tags                  #create tags for version 10
-        --tags8                 #create tags for version 8
-        --tags9                 #create tags for version 9
-        --upgrade               #echo what needs to be done to upgrade the script
-        --builder foss          # an alphanumeric builder name, updates .build.builder file with value
-        --builderID [\d\d\d]    # 3 digit value starting at 101-999, updates .build.number file with value
-        -V                      #version of this program
-        --dry-run               #show what we would do
+        --init                     #first time to setup envioroment (only once)
+        --version [10|9|8]         #build release 8.8.15 or 9.0.0 or 10.0.0
+        --version 10.0.8           #build release 10.0.8
+        --debug                    #extra output
+        --clean                    #remove everything but BUILDS
+        --tags                     #create tags for version 10
+        --tags8                    #create tags for version 8
+        --tags9                    #create tags for version 9
+        --upgrade                  #echo what needs to be done to upgrade the script
+        --builder foss             # an alphanumeric builder name, updates .build.builder file with value
+        --builderID [\d\d\d]       # 3 digit value starting at 101-999, updates .build.number file with value
+        -V                         #version of this program
+        --dry-run                  #show what we would do
+        --show-tags                #show latest tag for the repositories
+        --show-tags | grep 10.0.8  #show latest tag for the repositories
         --help
 
        Example usage:
@@ -348,7 +378,7 @@ echo "Clone Tag $clone_tag"
 #======================================================================================================================
 
 dryrun=0
-args=$(getopt -l "init,dry-run,tags,tags8,tags9,help,clean,upgrade,version:,builder:,builderID:,debug" -o "hV" -- "$@")
+args=$(getopt -l "init,show-tags,dry-run,tags,tags8,tags9,help,clean,upgrade,version:,builder:,builderID:,debug" -o "hV" -- "$@")
 eval set -- "$args"
 
 # Now process each option in a loop
@@ -361,6 +391,10 @@ while [ $# -ge 1 ]; do
                     ;;
                 --init)
                     init
+                    exit 0
+                    ;;
+                --show-tags)
+                    show_repository_tags
                     exit 0
                     ;;
                 --debug)
