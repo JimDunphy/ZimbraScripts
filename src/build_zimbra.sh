@@ -41,7 +41,7 @@
 #         Allow --clean to be specified with --version
 #
 
-scriptVersion=1.16
+scriptVersion=1.17
 copyTag=0.0
 default_builder="FOSS"
 default_number=1011000
@@ -411,6 +411,7 @@ while [ $# -ge 1 ]; do
                     shift 2 
                     ;;
                 --upgrade)
+                    echo cp $0 $0.$scriptVersion
                     echo wget -O $0 'https://raw.githubusercontent.com/JimDunphy/ZimbraScripts/master/src/build_zimbra.sh' 
                     exit 0
                     ;;
