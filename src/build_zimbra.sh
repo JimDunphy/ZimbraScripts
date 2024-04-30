@@ -41,7 +41,7 @@
 #         Allow --clean to be specified with --version
 #
 
-scriptVersion=1.17
+scriptVersion=1.18
 copyTag=0.0
 default_builder="FOSS"
 default_number=1011000
@@ -55,6 +55,49 @@ function d_echo() {
     fi
 }
 
+
+#
+# build.pl uses this construct to clone repositories
+#    % git clone --depth=1 -b 10.0.0-GA repo_name.git repo_dir
+# A problem arises when there are multiple tags for the same detached head state.
+# examples: zm-charset
+#
+function show_repository_clone_tag() {
+
+   if [ ! -d zm-zcs ]; then 
+      echo "You need to build a version before running this"
+      echo "  try: $0 --version 10"
+      exit 1
+   fi 
+
+   # Header for the output
+   printf "%-20s %-30s %-20s\n" "Tag Name" "Formatted Date" "Directory"
+
+   for dir in zm* ja* neko* ant* ical*
+   do
+
+      # %%%
+      # Could not find git command line option to determine which tag the repository was cloned with
+      # when multiple tags at the same detached head. Which one is correct?
+      # they use this construct: git clone --depth=1 -b 10.0.0-GA repo_name.git repo_dir
+      # example: zm-charset showing this issue.
+      # a grep showed that .git/config contained the tag used in the clone.
+      line=$(grep -R 'fetch = +refs/tags/' "$dir/.git/config")
+      repo=$(echo $line | cut -d'/' -f1)  # Extracts the repository directory name
+      tag=$(echo $line | sed -n 's/.*refs\/tags\/\([^:]*\).*/\1/p')  # Extracts the tag name
+
+      cd $dir
+      # An oddcase where the above observation didn't work and does work as expected
+      if [ $dir == "zm-mailbox" ]; then
+         tag=$(git describe --tags --exact-match)
+      fi
+      read -r timestamp tagname <<< $(git tag --format='%(creatordate:unix)%09%(refname:strip=2)' --sort=-taggerdate | grep "$tag" | head -n 1)
+      formatted_date=$(date -d "@$timestamp" '+%Y-%m-%d %H:%M:%S')  # Formats the timestamp into a human-readable date
+      cd ..
+
+      printf "%-20s %-30s %-20s\n" "$tag" "$formatted_date" "$dir"
+   done
+}
 
 # show the latest tag with each repository
 function show_repository_tags() {
@@ -244,8 +287,9 @@ function usage() {
         --builderID [\d\d\d]       # 3 digit value starting at 101-999, updates .build.number file with value
         -V                         #version of this program
         --dry-run                  #show what we would do
-        --show-tags                #show latest tag for the repositories
-        --show-tags | grep 10.0.8  #show latest tag for the repositories
+        --show-tags                #show latest tag for each repositories
+        --show-tags | grep 10.0.8  #show latest tag for each repositories with 10.0.8
+        --show-cloned-tags         #show tag of each cloned repository used for build
         --help
 
        Example usage:
@@ -378,7 +422,7 @@ echo "Clone Tag $clone_tag"
 #======================================================================================================================
 
 dryrun=0
-args=$(getopt -l "init,show-tags,dry-run,tags,tags8,tags9,help,clean,upgrade,version:,builder:,builderID:,debug" -o "hV" -- "$@")
+args=$(getopt -l "init,show-tags,show-cloned-tags,dry-run,tags,tags8,tags9,help,clean,upgrade,version:,builder:,builderID:,debug" -o "hV" -- "$@")
 eval set -- "$args"
 
 # Now process each option in a loop
@@ -395,6 +439,10 @@ while [ $# -ge 1 ]; do
                     ;;
                 --show-tags)
                     show_repository_tags
+                    exit 0
+                    ;;
+                --show-cloned-tags)
+                    show_repository_clone_tag
                     exit 0
                     ;;
                 --debug)
