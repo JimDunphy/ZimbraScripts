@@ -273,7 +273,11 @@ function init ()
 
 function usage() {
    echo "
-        $0
+        !!!NOTE!!!
+              There is a newer version (2.0+) that is simpler to use and will build all versions of Zimbra
+              See this link: https://wiki.zimbra.com/wiki/JDunphy-CompileZimbraScript
+
+        % $0
         --init                     #first time to setup envioroment (only once)
         --version [10|9|8]         #build release 8.8.15 or 9.0.0 or 10.0.0
         --version 10.0.8           #build release 10.0.8
