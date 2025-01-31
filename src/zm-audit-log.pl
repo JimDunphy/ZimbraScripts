@@ -25,6 +25,9 @@
 #               add your account to the zimbra group.
 #   Failures: Currently not checking for failures yet.
 #
+# Bug Fix: zimbraMailTreustedIP was assumed so adding this if oip doesn't exist:
+#            my ($ip) = $line =~ /(oip|ip)=([^;]+)/ ? $2 : undef; # Capture either oip or ip
+#
 # Sample output:
 #
 # % zm-audit-log.pl --file=/tmp/myaudit.log
@@ -64,7 +67,7 @@ use Time::Piece;
 use Getopt::Long;
 use Term::ANSIColor;
 
-our $VERSION = "1.0.1";  # Version tracking
+our $VERSION = "1.0.2";  # Version tracking
 
 # Command line options
 my $log_dir = '/opt/zimbra/log';
@@ -152,7 +155,7 @@ sub process_log_file {
         # Process app-specific password authentications
         if ($line =~ /successfully logged in with app-specific password/) {
             my ($account) = $line =~ /account ([^ ]+) successfully/;
-            my ($ip) = $line =~ /ip=([^;]+)/;
+            my ($ip) = $line =~ /oip=([^;]+)/ ? $1 : $line =~ /ip=([^;]+)/ ? $1 : undef; # Prioritize oip
 
             next unless ($account && $ip);
             $users{$account}{app_specific}{last_seen} = $timestamp;
@@ -166,7 +169,7 @@ sub process_log_file {
             my ($user) = $line =~ /User=([^&]+)/;
             my ($device_id) = $line =~ /DeviceId=([^&]+)/;
             my ($device_type) = $line =~ /DeviceType=([^&]+)/;
-            my ($ip) = $line =~ /ip=([^;]+)/;
+            my ($ip) = $line =~ /oip=([^;]+)/ ? $1 : $line =~ /ip=([^;]+)/ ? $1 : undef; # Prioritize oip
             my ($account) = $line =~ /account=([^;]+)/;
 
 
@@ -201,7 +204,7 @@ sub process_log_file {
         # Process trusted device authentications
         elsif ($line =~ /trusted device verified.*bypassing two-factor auth/) {
             my ($account) = $line =~ /account=([^;]+)/ ? $1 : $line =~ /name=([^;]+)/ ? $1 : undef;
-            my ($ip) = $line =~ /ip=([^;]+)/;
+            my ($ip) = $line =~ /oip=([^;]+)/ ? $1 : $line =~ /ip=([^;]+)/ ? $1 : undef; # Prioritize oip
             my ($ua) = $line =~ /ua=([^;]+)/;
 
             # Skip if we don't have required fields or if it's the zimbra account
@@ -224,8 +227,11 @@ sub process_log_file {
         # Process web client authentications and batch requests
         elsif ($line =~ /ZimbraWebClient/ || $line =~ /BatchRequest/) {
             my ($account) = $line =~ /account=([^;]+)/ ? $1 : $line =~ /name=([^;]+)/ ? $1 : undef;
-            my ($ip) = $line =~ /oip=([^;]+)/;
             my ($ua) = $line =~ /ua=([^;]+)/;
+
+            # Use oip if available, otherwise fall back to ip
+            # Can happen when zimbraMailTrustedIP isn't set for the proxy
+            my ($ip) = $line =~ /oip=([^;]+)/ ? $1 : $line =~ /ip=([^;]+)/ ? $1 : undef; # Prioritize oip
             
             # Skip if we don't have required fields or if it's the zimbra account
             next unless ($account && $ip);
@@ -242,9 +248,8 @@ sub process_log_file {
         # Process POP3/IMAP authentications
         elsif ($line =~ /protocol=(pop3|imap);/) {
             my ($account) = $line =~ /account=([^;]+)/;
-            my ($ip) = $line =~ /oip=([^;]+)/;
+            my ($ip) = $line =~ /oip=([^;]+)/ ? $1 : $line =~ /ip=([^;]+)/ ? $1 : undef; # Prioritize oip
             my ($protocol) = $line =~ /protocol=([^;]+)/;
-            my ($oip) = $line =~ /oip=([^;]+)/;  # Original IP if coming through proxy
 
     
             next unless ($account && $ip);
@@ -252,7 +257,7 @@ sub process_log_file {
             next unless $account =~ /@/;  # Skip invalid email addresses
     
 #%%%
-#print "protocol [$protocol] time [$timestamp] \n"; exit;
+#print "ip [$ip] protocol [$protocol] time [$timestamp] [$line]\n"; exit;
 
             $users{$account}{"${protocol}_client"}{last_seen} = $timestamp;
             $users{$account}{"${protocol}_client"}{last_ip} = $ip;
