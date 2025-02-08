@@ -67,7 +67,7 @@ use Time::Piece;
 use Getopt::Long;
 use Term::ANSIColor;
 
-our $VERSION = "1.0.2";  # Version tracking
+our $VERSION = "1.0.3";  # Version tracking
 
 # Command line options
 my $log_dir = '/opt/zimbra/log';
@@ -148,8 +148,8 @@ sub process_log_file {
         # Skip system zimbra authentication lines
         next if $line =~ /account=zimbra;/;
         
-        # Extract timestamp
-        my ($timestamp) = $line =~ /^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/;
+        # Extract timestamp (handle case with rsyslog using imfile module also)
+        my ($timestamp) = $line =~ /^(?:\S+\s+\d{1,2} \d{2}:\d{2}:\d{2} \S+ \S+:? )?(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+Z)?)/;
         next unless $timestamp; # Skip lines without timestamp
         
         # Process app-specific password authentications
