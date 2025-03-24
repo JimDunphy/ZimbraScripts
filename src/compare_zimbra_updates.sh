@@ -7,7 +7,7 @@
 # usage: compare_zimbra_updates.sh
 #
 # Caveat: assumes a repository was checked out for a verson of Zimbra.
-#   ie) cd zm-web-client; zimbra_updates.sh
+#   ie) cd zm-web-client; compare_zimbra_updates.sh
 #
 # Algorithm:
 # 1. Determine the current local git tag (e.g., 10.0.13).
