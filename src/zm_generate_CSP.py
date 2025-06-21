@@ -36,6 +36,14 @@
 # Call to Zimbra developers: please include something like this in your own builds.
 #
 # [1] https://blog.bigsmoke.us/2019/06/11/setting-up-a-zimbra-authenticated-proxy
+#
+# Future Ideas:
+#
+# - expand coverage to scan additional directories beyond /public (like /js, /WEB-INF/jsp, /WEB-INF/tags) and include inline event handlers (onclick, onload, etc.) 
+# - implement nonce-based CSP for dynamic content instead of relying solely on hashes, which would reduce policy size and improve maintainability; 
+# - add comprehensive CSP directives beyond just script-src (such as style-src, img-src, connect-src, frame-src) for complete protection; 
+# - integrate automated testing to validate that the CSP doesn't break Zimbra functionality before deployment; and 
+# - enhance reporting infrastructure with proper log analysis, alerting, and violation categorization to distinguish between legitimate missing hashes and actual attack attempts. 
 
 __version__ = "1.0.0"
 
